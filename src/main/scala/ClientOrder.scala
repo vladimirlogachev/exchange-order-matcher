@@ -4,6 +4,7 @@ import AssetPrice._
 import ClientName._
 import UsdAmount._
 import zio.parser._
+import zio.prelude._
 
 enum ClientOrder:
 
@@ -20,6 +21,9 @@ enum ClientOrder:
       assetAmount: AssetAmount,
       assetPrice: AssetPrice
   )
+
+implicit val ClientOrderEqual: Equal[ClientOrder] =
+  Equal.default
 
 val clientOrderSyntax: Syntax[String, Char, Char, ClientOrder] = {
   val buySyntax: Syntax[String, Char, Char, ClientOrder] = {

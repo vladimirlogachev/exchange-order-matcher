@@ -3,6 +3,7 @@ import AssetName._
 import AssetPrice._
 import ClientName._
 import UsdAmount._
+import zio.prelude._
 import zio.test._
 
 object SyntaxSpec extends ZIOSpecDefault {
@@ -22,8 +23,8 @@ object SyntaxSpec extends ZIOSpecDefault {
       val parsingResult        = ClientBalanceRecord.syntax.parseString(input).toOption
       val parsedAndPrintedBack = parsingResult.flatMap(x => ClientBalanceRecord.syntax.printString(x).toOption)
 
-      assertTrue(parsingResult == expectedOutput)
-      && assertTrue(parsedAndPrintedBack == Some(input))
+      assertTrue(parsingResult === expectedOutput)
+      && assertTrue(parsedAndPrintedBack === Some(input))
     },
     test("ClientOrder Buy") {
       val input = "C1	b	A	10	12"
@@ -35,7 +36,7 @@ object SyntaxSpec extends ZIOSpecDefault {
 
       val parsingResult = clientOrderSyntax.parseString(input).toOption
 
-      assertTrue(parsingResult == expectedOutput)
+      assertTrue(parsingResult === expectedOutput)
     },
     test("ClientOrder Sell") {
       val input = "C2	s	A	8	10"
@@ -47,7 +48,7 @@ object SyntaxSpec extends ZIOSpecDefault {
 
       val parsingResult = clientOrderSyntax.parseString(input).toOption
 
-      assertTrue(parsingResult == expectedOutput)
+      assertTrue(parsingResult === expectedOutput)
     }
   )
 

@@ -1,4 +1,5 @@
 import zio._
+import zio.prelude._
 import zio.stream._
 import zio.test._
 
@@ -35,7 +36,7 @@ object MatcherSpec extends ZIOSpecDefault {
 
       for {
         out <- runMatcher(ZStream.fromIterable(List.empty), ZStream.fromIterable(List.empty)).either
-      } yield assertTrue(out == Right(expectedMatcherOutput))
+      } yield assertTrue(out === Right(expectedMatcherOutput))
     },
     test("Given input produces expected output") {
       val balancesStream = balancesFromString(
@@ -55,7 +56,7 @@ object MatcherSpec extends ZIOSpecDefault {
         outEither <- runMatcher(balancesStream, ordersStream).either
       } yield {
         val strBalances = outEither.flatMap(out => balancesToString(toFinalBalances(out.state))).left.map(_.toString)
-        assertTrue(strBalances == Right(expectedOutputBalances))
+        assertTrue(strBalances === Right(expectedOutputBalances))
       }
     }
   )

@@ -4,6 +4,7 @@ import AssetPrice._
 import ClientName._
 import UsdAmount._
 import zio._
+import zio.prelude._
 import zio.stream._
 
 final case class ClientBalances(
@@ -84,10 +85,18 @@ enum MatcherError:
   case ItsInputStreamError(e: Throwable)
   case ItsClientLoadError(e: ClientLoadError)
 
+implicit val MatcherErrorEqual: Equal[MatcherError] =
+  Equal.default
+
 final case class MatcherOutput(
     state: MatcherState,
     rejectedOrders: List[(ClientOrder, OrderRejectionReason)]
 )
+
+object MatcherOutput:
+
+  implicit val MatcherOutputEqual: Equal[MatcherOutput] =
+    Equal.default
 
 def runMatcher(
     clientBalances: ZStream[Any, Throwable, ClientBalanceRecord],

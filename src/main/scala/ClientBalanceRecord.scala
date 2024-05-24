@@ -2,6 +2,7 @@ import AssetAmount._
 import ClientName._
 import UsdAmount._
 import zio.parser._
+import zio.prelude._
 
 final case class ClientBalanceRecord(
     clientName: ClientName,
@@ -13,6 +14,9 @@ final case class ClientBalanceRecord(
 )
 
 object ClientBalanceRecord:
+
+  implicit val ClientBalanceRecordEqual: Equal[ClientBalanceRecord] =
+    Equal.default
 
   val syntax = {
     val tupleSyntax =
