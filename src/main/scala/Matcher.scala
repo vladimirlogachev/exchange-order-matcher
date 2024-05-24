@@ -19,8 +19,8 @@ final case class MatcherState(
 object MatcherState:
   def empty: MatcherState = MatcherState(balances = Map.empty, pendingOrders = List.empty)
 
-def toFinalBalances(state: MatcherState): Seq[ClientBalanceRecord] =
-  state.balances.map { case (clientName, clientBalances) =>
+def toFinalBalances(state: MatcherState): Seq[ClientBalanceRecord] = state.balances.map {
+  case (clientName, clientBalances) =>
     ClientBalanceRecord(
       clientName,
       clientBalances.usdBalance,
@@ -29,7 +29,7 @@ def toFinalBalances(state: MatcherState): Seq[ClientBalanceRecord] =
       clientBalances.assetBalances(AssetName("C")),
       clientBalances.assetBalances(AssetName("D"))
     )
-  }.toSeq
+}.toSeq
 
 enum ClientLoadError:
   case ClientAlreadyExists
@@ -61,25 +61,24 @@ enum OrderRejectionReason:
 def processOrder(
     clientOrder: ClientOrder,
     state: MatcherState
-): Either[OrderRejectionReason, MatcherState] =
-  clientOrder match {
-    case ClientOrder.Buy(clientName, assetName, usdAmount, assetPrice) =>
-      for {
-        clientBalances <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
-        assetBalance   <- clientBalances.assetBalances.get(assetName).toRight(OrderRejectionReason.AssetBalanceNotFound)
-        _ <-
-          if clientBalances.usdBalance >= usdAmount then Right(())
-          else Left(OrderRejectionReason.InsufficientUsdBalance)
-        // TODO: implement the rest
-      } yield state
-    case ClientOrder.Sell(clientName, assetName, assetAmount, assetPrice) =>
-      for {
-        clientBalances <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
-        assetBalance   <- clientBalances.assetBalances.get(assetName).toRight(OrderRejectionReason.AssetBalanceNotFound)
-        _ <- if assetBalance >= assetAmount then Right(()) else Left(OrderRejectionReason.InsufficientAssetBalance)
-        // TODO: implement the rest
-      } yield state
-  }
+): Either[OrderRejectionReason, MatcherState] = clientOrder match {
+  case ClientOrder.Buy(clientName, assetName, usdAmount, assetPrice) =>
+    for {
+      clientBalances <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
+      assetBalance   <- clientBalances.assetBalances.get(assetName).toRight(OrderRejectionReason.AssetBalanceNotFound)
+      _ <-
+        if clientBalances.usdBalance >= usdAmount then Right(())
+        else Left(OrderRejectionReason.InsufficientUsdBalance)
+      // TODO: implement the rest
+    } yield state
+  case ClientOrder.Sell(clientName, assetName, assetAmount, assetPrice) =>
+    for {
+      clientBalances <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
+      assetBalance   <- clientBalances.assetBalances.get(assetName).toRight(OrderRejectionReason.AssetBalanceNotFound)
+      _ <- if assetBalance >= assetAmount then Right(()) else Left(OrderRejectionReason.InsufficientAssetBalance)
+      // TODO: implement the rest
+    } yield state
+}
 
 enum MatcherError:
   case ItsInputStreamError(e: Throwable)

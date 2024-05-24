@@ -8,4 +8,5 @@
 
 - `sbt run` - run
 - `sbt test` - test
-- `sbt scalafix` - lint
+- `sbt scalafmtAll` - format
+- `sbt scalafixAll` - lint
