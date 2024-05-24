@@ -12,6 +12,11 @@ def balancesFromString(s: String) =
       }
     )
 
+def balancesToString(balances: Iterable[ClientBalanceRecord]) =
+  balances
+    .map(ClientBalanceRecord.syntax.printString(_))
+    .foldRight(Right(""): Either[String, String])((aE, accE) => accE.flatMap(acc => aE.map(a => a ++ "\n" ++ acc)))
+
 def ordersFromString(s: String) =
   ZStream
     .fromIterable(s.split("\n"))
@@ -46,9 +51,16 @@ object MatcherSpec extends ZIOSpecDefault {
             |C2	s	A	8	10
             |""".stripMargin
         )
+        val expectedOutputBalances =
+          """C1	1000	10	5	15	0
+            |C2	2000	3	35	40	10
+            |""".stripMargin
         for {
-          out <- runMatcher(balancesStream, ordersStream).either
-        } yield assertTrue(out.isRight) // TODO: implement output balance collection and compare as strings or maps
+          outEither <- runMatcher(balancesStream, ordersStream).either
+        } yield {
+          val strBalances = outEither.flatMap(out => balancesToString(toFinalBalances(out.state))).left.map(_.toString)
+          assertTrue(strBalances == Right(expectedOutputBalances))
+        }
       }
     )
 }
