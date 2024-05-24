@@ -80,7 +80,7 @@ final case class MatcherOutput(
 
 def runMatcher(
     clientBalances: ZStream[Any, Throwable, ClientBalanceRecord],
-    orders: ZStream[Any, Throwable, ClientOrder] // TODO: stream
+    orders: ZStream[Any, Throwable, ClientOrder]
 ): IO[MatcherError, MatcherOutput] = {
 
   for {

@@ -18,7 +18,7 @@ object Main extends ZIOAppDefault {
       .via(ZPipeline.utf8Decode >>> ZPipeline.splitLines)
       .mapZIO(s =>
         ClientBalanceRecord.syntax.parseString(s) match {
-          case Left(_)  => ZIO.fail(new IOException("Failed to parse client balance"))
+          case Left(_)  => ZIO.fail(new Exception("Failed to parse client balance"))
           case Right(v) => ZIO.succeed(v)
         }
       )
@@ -33,7 +33,7 @@ object Main extends ZIOAppDefault {
       .fromIterable(balances)
       .mapZIO(v =>
         ClientBalanceRecord.syntax.printString(v) match {
-          case Left(_)  => ZIO.fail(new IOException("Failed to parse client balance"))
+          case Left(_)  => ZIO.fail(new Exception("Failed to print client balance"))
           case Right(s) => ZIO.succeed(s)
         }
       )
@@ -46,7 +46,7 @@ object Main extends ZIOAppDefault {
       .via(ZPipeline.utf8Decode >>> ZPipeline.splitLines)
       .mapZIO(s =>
         clientOrderSyntax.parseString(s) match {
-          case Left(_)  => ZIO.fail(new IOException("Failed to parse client order"))
+          case Left(_)  => ZIO.fail(new Exception("Failed to parse client order"))
           case Right(v) => ZIO.succeed(v)
         }
       )
