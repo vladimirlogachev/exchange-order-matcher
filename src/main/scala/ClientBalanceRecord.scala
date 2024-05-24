@@ -1,10 +1,7 @@
-import zio.parser._
-
-import ClientName._
-import AssetName._
-import UsdAmount._
 import AssetAmount._
-import AssetPrice._
+import ClientName._
+import UsdAmount._
+import zio.parser._
 
 final case class ClientBalanceRecord(
     clientName: ClientName,
@@ -16,6 +13,7 @@ final case class ClientBalanceRecord(
 )
 
 object ClientBalanceRecord:
+
   val syntax = {
     val tupleSyntax =
       ClientName.syntax

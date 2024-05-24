@@ -28,6 +28,7 @@ def ordersFromString(s: String) =
     )
 
 object MatcherSpec extends ZIOSpecDefault {
+
   def spec: Spec[Any, Nothing] =
     suite("Simle cases")(
       test("Empty inputs produce empty outputs") {
@@ -63,4 +64,5 @@ object MatcherSpec extends ZIOSpecDefault {
         }
       }
     )
+
 }

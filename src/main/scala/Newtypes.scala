@@ -22,6 +22,7 @@ object UsdAmount:
   opaque type UsdAmount = Int
 
   object UsdAmount:
+
     def apply(i: Int): Option[UsdAmount] =
       if i >= 0 then Some(i)
       else None
@@ -37,6 +38,7 @@ object AssetAmount:
   opaque type AssetAmount = Int
 
   object AssetAmount:
+
     def apply(i: Int): Option[AssetAmount] =
       if i >= 0 then Some(i)
       else None
@@ -52,6 +54,7 @@ object AssetPrice:
   opaque type AssetPrice = Int
 
   object AssetPrice:
+
     def apply(i: Int): Option[AssetPrice] =
       if i > 0 then Some(i)
       else None

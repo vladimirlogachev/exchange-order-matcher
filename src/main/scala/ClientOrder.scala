@@ -1,18 +1,19 @@
+import AssetAmount._
+import AssetName._
+import AssetPrice._
+import ClientName._
+import UsdAmount._
 import zio.parser._
 
-import ClientName._
-import AssetName._
-import UsdAmount._
-import AssetAmount._
-import AssetPrice._
-
 enum ClientOrder:
+
   case Buy(
       clientName: ClientName,
       assetName: AssetName,
       usdAmount: UsdAmount,
       assetPrice: AssetPrice
   )
+
   case Sell(
       clientName: ClientName,
       assetName: AssetName,
