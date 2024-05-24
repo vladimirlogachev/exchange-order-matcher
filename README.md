@@ -6,5 +6,6 @@
 
 ## Usage
 
-- `sbt test`
-- `sbt run`
+- `sbt run` - run
+- `sbt test` - test
+- `sbt scalafix` - lint

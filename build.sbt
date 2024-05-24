@@ -6,6 +6,9 @@ lazy val root = project
     name := "exchange-matcher",
     version := "0.1.0-SNAPSHOT",
     scalaVersion := scala3Version,
+    scalacOptions ++= Seq(
+      "-Werror"
+    ),
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % "2.1.1",
       "dev.zio" %% "zio-streams" % "2.1.1",
@@ -13,5 +16,8 @@ lazy val root = project
       "dev.zio" %% "zio-test" % "2.1.1" % Test,
       "dev.zio" %% "zio-test-sbt" % "2.1.1" % Test
     ),
-    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
+    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
+    // Scalafix
+    semanticdbEnabled := true,
+    semanticdbVersion := scalafixSemanticdb.revision
   )
