@@ -23,7 +23,7 @@ object Main extends ZIOAppDefault {
         }
       )
 
-  def balancesToFile(fileName: String, balances: List[ClientBalanceRecord]) =
+  def balancesToFile(fileName: String, balances: Iterable[ClientBalanceRecord]) =
     val fileSink =
       ZSink
         .fromPath(Paths.get(fileName))
@@ -56,14 +56,7 @@ object Main extends ZIOAppDefault {
       output <- runMatcher(balancesFromFile("clients.txt"), ordersFromFile("orders.txt")).mapError(e =>
         new Error(e.toString)
       )
-      _ <- printLine(output)
-
-      // TODO: write actual outputs to file
-      stubOutputBalances <- balancesFromFile("clients.txt").run(
-        ZSink.foldLeft(List.empty[ClientBalanceRecord])((b, a) => b ++ List(a))
-      )
-      _ <- balancesToFile("results.txt", stubOutputBalances)
-
+      _ <- balancesToFile("results.txt", toFinalBalances(output.state))
     } yield ()
   }
 }

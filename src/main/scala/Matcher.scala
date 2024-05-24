@@ -19,10 +19,22 @@ final case class MatcherState(
 object MatcherState:
   def empty: MatcherState = MatcherState(balances = Map.empty, pendingOrders = List.empty)
 
+def toFinalBalances(state: MatcherState): Seq[ClientBalanceRecord] =
+  state.balances.map { case (clientName, clientBalances) =>
+    ClientBalanceRecord(
+      clientName,
+      clientBalances.usdBalance,
+      clientBalances.assetBalances(AssetName("A")),
+      clientBalances.assetBalances(AssetName("B")),
+      clientBalances.assetBalances(AssetName("C")),
+      clientBalances.assetBalances(AssetName("D"))
+    )
+  }.toSeq
+
 enum ClientLoadError:
   case ClientAlreadyExists
 
-def loadClient(
+def loadClientBalance(
     record: ClientBalanceRecord,
     state: MatcherState
 ): Either[ClientLoadError, MatcherState] =
@@ -48,25 +60,25 @@ enum OrderRejectionReason:
 
 def processOrder(
     clientOrder: ClientOrder,
-    model: MatcherState
+    state: MatcherState
 ): Either[OrderRejectionReason, MatcherState] =
   clientOrder match {
     case ClientOrder.Buy(clientName, assetName, usdAmount, assetPrice) =>
       for {
-        clientBalances <- model.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
+        clientBalances <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
         assetBalance <- clientBalances.assetBalances.get(assetName).toRight(OrderRejectionReason.AssetBalanceNotFound)
         _ <-
           if clientBalances.usdBalance >= usdAmount then Right(())
           else Left(OrderRejectionReason.InsufficientUsdBalance)
         // TODO: implement the rest
-      } yield model
+      } yield state
     case ClientOrder.Sell(clientName, assetName, assetAmount, assetPrice) =>
       for {
-        clientBalances <- model.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
+        clientBalances <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
         assetBalance <- clientBalances.assetBalances.get(assetName).toRight(OrderRejectionReason.AssetBalanceNotFound)
         _ <- if assetBalance >= assetAmount then Right(()) else Left(OrderRejectionReason.InsufficientAssetBalance)
         // TODO: implement the rest
-      } yield model
+      } yield state
   }
 
 enum MatcherError:
@@ -87,7 +99,7 @@ def runMatcher(
     model1 <- clientBalances
       .run(
         ZSink.foldLeft(Right(MatcherState.empty): Either[ClientLoadError, MatcherState])((state, clientBalance) =>
-          state.flatMap(loadClient(clientBalance, _))
+          state.flatMap(loadClientBalance(clientBalance, _))
         )
       )
       .mapError(MatcherError.ItsInputStreamError(_))
