@@ -51,14 +51,11 @@ object Main extends ZIOAppDefault {
         }
       )
 
-  private def main: IO[Throwable, Unit] = {
-
-    val output = runMatcher(clients, clientOrders)
-
+  def run = {
     for {
-      _ <- balancesFromFile("clients.txt").foreach(printLine(_))
-      _ <- ordersFromFile("orders.txt").foreach(printLine(_))
-
+      output <- runMatcher(balancesFromFile("clients.txt"), ordersFromFile("orders.txt")).mapError(e =>
+        new Error(e.toString)
+      )
       _ <- printLine(output)
 
       // TODO: write actual outputs to file
@@ -69,41 +66,4 @@ object Main extends ZIOAppDefault {
 
     } yield ()
   }
-
-  def run: IO[Throwable, Unit] = main
 }
-
-val clients = List(
-  ClientBalanceRecord(
-    ClientName("C1"),
-    UsdAmount(1000).get,
-    AssetAmount(10).get,
-    AssetAmount(5).get,
-    AssetAmount(15).get,
-    AssetAmount(0).get
-  ),
-  ClientBalanceRecord(
-    ClientName("C2"),
-    UsdAmount(2000).get,
-    AssetAmount(3).get,
-    AssetAmount(35).get,
-    AssetAmount(40).get,
-    AssetAmount(10).get
-  )
-)
-
-val clientOrders = List(
-  ClientOrder
-    .Buy(
-      ClientName("C1"),
-      AssetName("A"),
-      UsdAmount(10).get,
-      AssetPrice(12).get
-    ),
-  ClientOrder.Sell(
-    ClientName("C2"),
-    AssetName("A"),
-    AssetAmount(8).get,
-    AssetPrice(10).get
-  )
-)

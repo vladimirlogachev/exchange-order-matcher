@@ -3,6 +3,8 @@ import AssetName._
 import UsdAmount._
 import AssetAmount._
 import AssetPrice._
+import zio.stream._
+import zio._
 
 final case class ClientBalances(
     usdBalance: UsdAmount,
@@ -67,7 +69,9 @@ def processOrder(
       } yield model
   }
 
-type MatcherError = ClientLoadError
+enum MatcherError:
+  case ItsInputStreamError(e: Throwable)
+  case ItsClientLoadError(e: ClientLoadError)
 
 final case class MatcherOutput(
     state: MatcherState,
@@ -75,15 +79,25 @@ final case class MatcherOutput(
 )
 
 def runMatcher(
-    clients: List[ClientBalanceRecord], // TODO: stream
-    orders: List[ClientOrder] // TODO: stream
-): Either[MatcherError, MatcherOutput] = for {
-  model1 <- clients
-    .foldLeft(Right(MatcherState.empty): Either[ClientLoadError, MatcherState]) { (state, client) =>
-      state.flatMap(loadClient(client, _))
-    }
-} yield {
-  val rejectedOrders = List.empty[(ClientOrder, OrderRejectionReason)]
-  val finalModel = model1
-  MatcherOutput(finalModel, rejectedOrders)
+    clientBalances: ZStream[Any, Throwable, ClientBalanceRecord],
+    orders: ZStream[Any, Throwable, ClientOrder] // TODO: stream
+): IO[MatcherError, MatcherOutput] = {
+
+  for {
+    model1 <- clientBalances
+      .run(
+        ZSink.foldLeft(Right(MatcherState.empty): Either[ClientLoadError, MatcherState])((state, clientBalance) =>
+          state.flatMap(loadClient(clientBalance, _))
+        )
+      )
+      .mapError(MatcherError.ItsInputStreamError(_))
+    model2 <- ZIO
+      .fromEither(model1)
+      .mapError(MatcherError.ItsClientLoadError(_))
+
+  } yield {
+    val rejectedOrders = List.empty[(ClientOrder, OrderRejectionReason)]
+    val finalModel = model2
+    MatcherOutput(finalModel, rejectedOrders)
+  }
 }
