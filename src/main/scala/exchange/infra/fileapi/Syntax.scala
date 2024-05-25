@@ -31,8 +31,8 @@ val assetPriceSyntax: Syntax[String, Char, Char, AssetPrice] = Syntax.digit.repe
   v => Right(v.toString)
 ) ?? "AssetPrice"
 
-val clientOrderSyntax: Syntax[String, Char, Char, ClientOrder] = {
-  val buySyntax: Syntax[String, Char, Char, ClientOrder] = {
+val clientOrderSyntax: Syntax[String, Char, Char, Order] = {
+  val buySyntax: Syntax[String, Char, Char, Order] = {
     val tupleSyntax =
       clientNameSyntax
         ~ tabChar
@@ -45,13 +45,13 @@ val clientOrderSyntax: Syntax[String, Char, Char, ClientOrder] = {
         ~ assetPriceSyntax
 
     tupleSyntax.transformTo(
-      ClientOrder.Buy.apply.tupled,
-      { case (x: ClientOrder.Buy) => (x.clientName, x.assetName, x.usdAmount, x.assetPrice) },
+      Order.Buy.apply.tupled,
+      { case (x: Order.Buy) => (x.clientName, x.assetName, x.usdAmount, x.assetPrice) },
       "Not a Buy order"
-    ) ?? "ClientOrder.Buy"
+    ) ?? "Order.Buy"
   }
 
-  val sellSyntax: Syntax[String, Char, Char, ClientOrder] = {
+  val sellSyntax: Syntax[String, Char, Char, Order] = {
     val tupleSyntax =
       clientNameSyntax
         ~ tabChar
@@ -64,13 +64,13 @@ val clientOrderSyntax: Syntax[String, Char, Char, ClientOrder] = {
         ~ assetPriceSyntax
 
     tupleSyntax.transformTo(
-      ClientOrder.Sell.apply.tupled,
-      { case (x: ClientOrder.Sell) => (x.clientName, x.assetName, x.assetAmount, x.assetPrice) },
+      Order.Sell.apply.tupled,
+      { case (x: Order.Sell) => (x.clientName, x.assetName, x.assetAmount, x.assetPrice) },
       "Not a Sell order"
-    ) ?? "ClientOrder.Sell"
+    ) ?? "Order.Sell"
   }
 
-  (buySyntax | sellSyntax) ?? "ClientOrder"
+  (buySyntax | sellSyntax) ?? "Order"
 }
 
 val clientBalanceRecordSyntax = {

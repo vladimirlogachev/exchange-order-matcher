@@ -43,7 +43,7 @@ implicit val StringFileApiErrorEqual: Equal[StringFileApiError] =
 
 final case class FileApiOutput(
     state: ExchangeState,
-    rejectedOrders: Vector[(ClientOrder, OrderRejectionReason)]
+    rejectedOrders: Vector[(Order, OrderRejectionReason)]
 )
 
 object FileApiOutput:
@@ -55,7 +55,7 @@ object FileApi:
 
   def run(
       clientBalances: ZStream[Any, StringFileApiError, ClientBalanceRecord],
-      orders: ZStream[Any, StringFileApiError, ClientOrder]
+      orders: ZStream[Any, StringFileApiError, Order]
   ): IO[StringFileApiError, FileApiOutput] = for {
     state1Either <- clientBalances
       .run(
@@ -68,9 +68,9 @@ object FileApi:
 
     (finalstate, rejectedOrders) <- orders
       .run(
-        ZSink.foldLeft((state1, Vector.empty[(ClientOrder, OrderRejectionReason)]))((acc, order) =>
+        ZSink.foldLeft((state1, Vector.empty[(Order, OrderRejectionReason)]))((acc, order) =>
           val (state, rejectedOrders) = acc
-          processOrder(order, state) match
+          Exchange.processOrder(order, state) match
             case Right(newState) => (newState, rejectedOrders)
             case Left(rejection) => (state, rejectedOrders :+ (order, rejection)) // TODO: reverse the order
         )
@@ -80,7 +80,7 @@ object FileApi:
 
   def runToBalanceRecords(
       clientBalances: ZStream[Any, StringFileApiError, ClientBalanceRecord],
-      orders: ZStream[Any, StringFileApiError, ClientOrder]
+      orders: ZStream[Any, StringFileApiError, Order]
   ): IO[StringFileApiError, Set[ClientBalanceRecord]] =
     run(clientBalances, orders).map(x => toFinalBalances(x.state))
 
@@ -139,7 +139,7 @@ object FileApi:
   private def toClientBalanceStrings(state: ExchangeState): Either[String, Set[String]] =
     toFinalBalances(state)
       .map(clientBalanceRecordSyntax.printString(_))
-      .foldRight(Right(Set.empty): Either[Nothing, Set[String]])((xE, accE) =>
+      .foldLeft(Right(Set.empty): Either[Nothing, Set[String]])((accE, xE) =>
         for {
           x   <- xE
           acc <- accE
