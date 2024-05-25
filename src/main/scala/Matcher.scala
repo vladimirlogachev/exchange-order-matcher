@@ -20,7 +20,10 @@ final case class MatcherState(
 object MatcherState:
   def empty: MatcherState = MatcherState(balances = Map.empty, pendingOrders = List.empty)
 
-def toFinalBalances(state: MatcherState): Seq[ClientBalanceRecord] = state.balances.map {
+/** Note: A `Set[String]` instead of just `String` can be helpful for lookups and equality checks in unit tests, without
+  * a need for sorting the output.
+  */
+def toFinalBalances(state: MatcherState): Set[ClientBalanceRecord] = state.balances.map {
   case (clientName, clientBalances) =>
     ClientBalanceRecord(
       clientName,
@@ -30,7 +33,7 @@ def toFinalBalances(state: MatcherState): Seq[ClientBalanceRecord] = state.balan
       clientBalances.assetBalances(AssetName("C")),
       clientBalances.assetBalances(AssetName("D"))
     )
-}.toSeq
+}.toSet
 
 enum ClientLoadError:
   case ClientAlreadyExists
@@ -124,3 +127,13 @@ def runMatcher(
     MatcherOutput(finalModel, rejectedOrders)
   }
 }
+
+def outputToClientBalanceStrings(matcherOutput: MatcherOutput): Either[String, Set[String]] =
+  toFinalBalances(matcherOutput.state)
+    .map(ClientBalanceRecord.syntax.printString(_))
+    .foldRight(Right(Set.empty): Either[String, Set[String]])((xE, accE) =>
+      for {
+        x   <- xE
+        acc <- accE
+      } yield acc + x
+    )

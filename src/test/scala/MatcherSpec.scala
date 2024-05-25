@@ -3,6 +3,8 @@ import zio.prelude._
 import zio.stream._
 import zio.test._
 
+/** Unit testing helper
+  */
 def balancesFromString(s: String) = ZStream
   .fromIterable(s.split("\n"))
   .mapZIO(s =>
@@ -12,10 +14,8 @@ def balancesFromString(s: String) = ZStream
     }
   )
 
-def balancesToString(balances: Iterable[ClientBalanceRecord]) = balances
-  .map(ClientBalanceRecord.syntax.printString(_))
-  .foldRight(Right(""): Either[String, String])((aE, accE) => accE.flatMap(acc => aE.map(a => a ++ "\n" ++ acc)))
-
+/** Unit testing helper
+  */
 def ordersFromString(s: String) = ZStream
   .fromIterable(s.split("\n"))
   .mapZIO(s =>
@@ -24,6 +24,13 @@ def ordersFromString(s: String) = ZStream
       case Right(v) => ZIO.succeed(v)
     }
   )
+
+/** TODO: rewrite
+  */
+def balancesToString(balances: Set[ClientBalanceRecord]) = balances
+  .map(ClientBalanceRecord.syntax.printString(_))
+  .foldRight(Right(""): Either[String, String])((aE, accE) => accE.flatMap(acc => aE.map(a => a ++ "\n" ++ acc)))
+  .getOrElse("")
 
 object MatcherSpec extends ZIOSpecDefault {
 
@@ -53,9 +60,9 @@ object MatcherSpec extends ZIOSpecDefault {
                                      |C2	2000	3	35	40	10
                                      |""".stripMargin
       for {
-        outEither <- runMatcher(balancesStream, ordersStream).either
+        outputEither <- runMatcher(balancesStream, ordersStream).either
       } yield {
-        val strBalances = outEither.flatMap(out => balancesToString(toFinalBalances(out.state))).left.map(_.toString)
+        val strBalances = outputEither.map(out => balancesToString(toFinalBalances(out.state)))
         assertTrue(strBalances === Right(expectedOutputBalances))
       }
     },
@@ -66,11 +73,12 @@ object MatcherSpec extends ZIOSpecDefault {
           |C1	500	3	35	40	10
           |""".stripMargin
       )
-      val ordersStream = ordersFromString("")
+      val ordersStream  = ordersFromString("")
+      val expectedError = MatcherError.ItsClientLoadError(ClientLoadError.ClientAlreadyExists)
       for {
-        outEither <- runMatcher(balancesStream, ordersStream).either
+        outputEither <- runMatcher(balancesStream, ordersStream).either
       } yield {
-        assertTrue(outEither === Left(MatcherError.ItsClientLoadError(ClientLoadError.ClientAlreadyExists)))
+        assertTrue(outputEither === Left(expectedError))
       }
     }
   )
