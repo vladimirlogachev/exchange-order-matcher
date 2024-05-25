@@ -1,11 +1,10 @@
 package exchange.infra.fileapi
 
+import exchange.domain.model.MatcherState
 import zio._
 import zio.prelude._
 import zio.stream._
 import zio.test._
-
-import exchange.domain.model.MatcherState
 
 object FileApiSpec extends ZIOSpecDefault {
 

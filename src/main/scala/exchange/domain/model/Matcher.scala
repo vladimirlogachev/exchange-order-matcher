@@ -1,12 +1,11 @@
 package exchange.domain.model
 
+import exchange.domain.model.AssetAmounts._
+import exchange.domain.model.AssetNames._
+import exchange.domain.model.AssetPrices._
+import exchange.domain.model.ClientNames._
+import exchange.domain.model.UsdAmounts._
 import zio.prelude._
-
-import AssetAmounts._
-import AssetNames._
-import AssetPrices._
-import ClientNames._
-import UsdAmounts._
 
 enum ClientOrder:
 

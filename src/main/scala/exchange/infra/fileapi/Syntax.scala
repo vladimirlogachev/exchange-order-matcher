@@ -1,13 +1,12 @@
 package exchange.infra.fileapi
 
-import zio.parser._
-
+import exchange.domain.model.AssetAmounts._
+import exchange.domain.model.AssetNames._
+import exchange.domain.model.AssetPrices._
+import exchange.domain.model.ClientNames._
+import exchange.domain.model.UsdAmounts._
 import exchange.domain.model._
-import ClientNames._
-import AssetNames._
-import UsdAmounts._
-import AssetAmounts._
-import AssetPrices._
+import zio.parser._
 
 val tabChar = Syntax.char('\t')
 

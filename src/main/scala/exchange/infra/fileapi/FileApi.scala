@@ -1,15 +1,14 @@
 package exchange.infra.fileapi
 
+import exchange.domain.model.AssetAmounts._
+import exchange.domain.model.AssetNames._
+import exchange.domain.model.ClientNames._
+import exchange.domain.model.UsdAmounts._
+import exchange.domain.model._
 import zio._
+import zio.parser.Parser.ParserError
 import zio.prelude._
 import zio.stream._
-
-import exchange.domain.model._
-import AssetAmounts._
-import AssetNames._
-import ClientNames._
-import UsdAmounts._
-import zio.parser.Parser.ParserError
 
 final case class ClientBalanceRecord(
     clientName: ClientName,
