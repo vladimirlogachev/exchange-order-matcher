@@ -1,8 +1,9 @@
-import AssetAmount._
-import AssetName._
-import AssetPrice._
-import ClientName._
-import UsdAmount._
+import exchange.domain.model._
+import AssetAmounts._
+import AssetNames._
+import AssetPrices._
+import ClientNames._
+import UsdAmounts._
 import zio.prelude._
 import zio.test._
 
@@ -20,8 +21,8 @@ object SyntaxSpec extends ZIOSpecDefault {
         balanceD   <- AssetAmount(0)
       } yield ClientBalanceRecord(ClientName("C1"), usdBalance, balanceA, balanceB, balanceC, balanceD)
 
-      val parsingResult        = ClientBalanceRecord.syntax.parseString(input).toOption
-      val parsedAndPrintedBack = parsingResult.flatMap(x => ClientBalanceRecord.syntax.printString(x).toOption)
+      val parsingResult        = clientBalanceRecordSyntax.parseString(input).toOption
+      val parsedAndPrintedBack = parsingResult.flatMap(x => clientBalanceRecordSyntax.printString(x).toOption)
 
       assertTrue(parsingResult === expectedOutput)
       && assertTrue(parsedAndPrintedBack === Some(input))

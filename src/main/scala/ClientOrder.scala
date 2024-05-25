@@ -1,9 +1,11 @@
-import AssetAmount._
-import AssetName._
-import AssetPrice._
-import ClientName._
-import UsdAmount._
-import zio.parser._
+import exchange.domain.model._
+
+import AssetAmounts._
+import AssetNames._
+import AssetPrices._
+import ClientNames._
+import UsdAmounts._
+
 import zio.prelude._
 
 enum ClientOrder:
@@ -24,45 +26,3 @@ enum ClientOrder:
 
 implicit val ClientOrderEqual: Equal[ClientOrder] =
   Equal.default
-
-val clientOrderSyntax: Syntax[String, Char, Char, ClientOrder] = {
-  val buySyntax: Syntax[String, Char, Char, ClientOrder] = {
-    val tupleSyntax =
-      ClientName.syntax
-        ~ tabChar
-        ~ Syntax.char('b')
-        ~ tabChar
-        ~ AssetName.syntax
-        ~ tabChar
-        ~ UsdAmount.syntax
-        ~ tabChar
-        ~ AssetPrice.syntax
-
-    tupleSyntax.transformTo(
-      ClientOrder.Buy.apply.tupled,
-      { case (x: ClientOrder.Buy) => (x.clientName, x.assetName, x.usdAmount, x.assetPrice) },
-      "Not a Buy order"
-    ) ?? "ClientOrder.Buy"
-  }
-
-  val sellSyntax: Syntax[String, Char, Char, ClientOrder] = {
-    val tupleSyntax =
-      ClientName.syntax
-        ~ tabChar
-        ~ Syntax.char('s')
-        ~ tabChar
-        ~ AssetName.syntax
-        ~ tabChar
-        ~ AssetAmount.syntax
-        ~ tabChar
-        ~ AssetPrice.syntax
-
-    tupleSyntax.transformTo(
-      ClientOrder.Sell.apply.tupled,
-      { case (x: ClientOrder.Sell) => (x.clientName, x.assetName, x.assetAmount, x.assetPrice) },
-      "Not a Sell order"
-    ) ?? "ClientOrder.Sell"
-  }
-
-  (buySyntax | sellSyntax) ?? "ClientOrder"
-}

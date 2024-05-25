@@ -1,6 +1,6 @@
 import java.nio.file.Paths
-
-import ClientName._
+import exchange.domain.model._
+import ClientNames._
 import zio._
 import zio.stream._
 import zio.prelude._
@@ -21,7 +21,7 @@ object Main extends ZIOAppDefault {
     .fromFileName(fileName)
     .via(ZPipeline.utf8Decode >>> ZPipeline.splitLines)
     .mapZIO(s =>
-      ClientBalanceRecord.syntax.parseString(s) match {
+      clientBalanceRecordSyntax.parseString(s) match {
         case Left(_)  => ZIO.fail(new Exception("Failed to parse client balance"))
         case Right(v) => ZIO.succeed(v)
       }

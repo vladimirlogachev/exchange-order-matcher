@@ -8,7 +8,7 @@ import zio.test._
 def balancesFromString(s: String) = ZStream
   .fromIterable(s.split("\n"))
   .mapZIO(s =>
-    ClientBalanceRecord.syntax.parseString(s) match {
+    clientBalanceRecordSyntax.parseString(s) match {
       case Left(_)  => ZIO.fail(new Exception("Failed to parse client balance"))
       case Right(v) => ZIO.succeed(v)
     }
@@ -28,7 +28,7 @@ def ordersFromString(s: String) = ZStream
 /** TODO: rewrite
   */
 def balancesToString(balances: Set[ClientBalanceRecord]) = balances
-  .map(ClientBalanceRecord.syntax.printString(_))
+  .map(clientBalanceRecordSyntax.printString(_))
   .foldRight(Right(""): Either[String, String])((aE, accE) => accE.flatMap(acc => aE.map(a => a ++ "\n" ++ acc)))
   .getOrElse("")
 

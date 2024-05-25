@@ -1,7 +1,9 @@
-import AssetAmount._
-import ClientName._
-import UsdAmount._
-import zio.parser._
+import exchange.domain.model._
+import AssetAmounts._
+
+import ClientNames._
+import UsdAmounts._
+
 import zio.prelude._
 
 final case class ClientBalanceRecord(
@@ -17,23 +19,3 @@ object ClientBalanceRecord:
 
   implicit val ClientBalanceRecordEqual: Equal[ClientBalanceRecord] =
     Equal.default
-
-  val syntax = {
-    val tupleSyntax =
-      ClientName.syntax
-        ~ tabChar
-        ~ UsdAmount.syntax
-        ~ tabChar
-        ~ AssetAmount.syntax
-        ~ tabChar
-        ~ AssetAmount.syntax
-        ~ tabChar
-        ~ AssetAmount.syntax
-        ~ tabChar
-        ~ AssetAmount.syntax
-
-    tupleSyntax.transform(
-      ClientBalanceRecord.apply.tupled,
-      x => (x.clientName, x.usdBalance, x.balanceA, x.balanceB, x.balanceC, x.balanceD)
-    ) ?? "ClientBalanceRecord"
-  }
