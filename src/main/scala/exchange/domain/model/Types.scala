@@ -17,9 +17,14 @@ object AssetNames:
 object UsdAmounts:
   opaque type UsdAmount = Int
 
-  extension (x: UsdAmount) def >=(y: UsdAmount): Boolean = x >= y
+  extension (x: UsdAmount) {
+    def +(y: UsdAmount): UsdAmount         = x + y
+    def -(y: UsdAmount): Option[UsdAmount] = UsdAmount(x - y)
+    def >=(y: UsdAmount): Boolean          = x >= y
+  }
 
   object UsdAmount:
+    def zero: UsdAmount = 0
 
     def apply(i: Int): Option[UsdAmount] =
       if i >= 0 then Some(i)

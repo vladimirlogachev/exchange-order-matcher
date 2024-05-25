@@ -24,8 +24,26 @@ object Order:
   implicit val OrderEqual: Equal[Order] =
     Equal.default
 
+case class CompoundBalance[A](
+    free: A,
+    locked: A
+)
+
+/** TODO: Consider separate CompoundBalance types */
+def totalUsdBalance(x: CompoundBalance[UsdAmount]) = x.free + x.locked
+
+def lockUsd(
+    usdAmount: UsdAmount,
+    b: CompoundBalance[UsdAmount]
+): Either[OrderRejectionReason, CompoundBalance[UsdAmount]] = for {
+  newFree <- (b.free - usdAmount).toRight(OrderRejectionReason.InsufficientUsdBalance)
+} yield CompoundBalance(
+  free = newFree,
+  locked = b.locked + usdAmount
+)
+
 final case class ClientBalances(
-    usdBalance: UsdAmount,
+    usdBalance: CompoundBalance[UsdAmount],
     assetBalances: Map[AssetName, AssetAmount]
 )
 
@@ -68,7 +86,7 @@ object Exchange:
         requiredUsdAmount <- order.assetAmount
           .toUsdAmount(order.assetPrice)
           .toRight(OrderRejectionReason.UnexpectedInternalError)
-        state1 <- lockUsd(order.clientName, requiredUsdAmount, state)
+        state1 <- lockClientUsd(order.clientName, requiredUsdAmount, state)
         // orderBook <- state.orders.get(order.assetName).toRight(OrderRejectionReason.TodoError)
       } yield state1
     case OrderSide.Sell =>
@@ -78,16 +96,14 @@ object Exchange:
   }
 
   /** TODO: maybe add orderId to lock assets for? */
-  private def lockUsd(
+  private def lockClientUsd(
       clientName: ClientName,
       usdAmount: UsdAmount,
       state: ExchangeState
   ): Either[OrderRejectionReason, ExchangeState] = for {
-    clientBalances <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
-    _ <-
-      if clientBalances.usdBalance >= usdAmount then Right(()) // TODO: lock
-      else Left(OrderRejectionReason.InsufficientUsdBalance)
-  } yield state
+    clientBalance <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
+    newUsdBalance <- lockUsd(usdAmount, clientBalance.usdBalance)
+  } yield state.copy(balances = state.balances.updated(clientName, clientBalance.copy(usdBalance = newUsdBalance)))
 
   /** TODO: maybe add orderId to lock assets for? */
   private def lockAsset(
@@ -96,9 +112,9 @@ object Exchange:
       assetAmount: AssetAmount,
       state: ExchangeState
   ): Either[OrderRejectionReason, ExchangeState] = for {
-    clientBalances <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
-    assetBalance   <- clientBalances.assetBalances.get(assetName).toRight(OrderRejectionReason.UnexpectedInternalError)
+    clientBalance <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
+    assetBalance  <- clientBalance.assetBalances.get(assetName).toRight(OrderRejectionReason.UnexpectedInternalError)
     _ <-
-      if assetBalance >= assetAmount then Right(()) // TODO: lock
+      if assetBalance >= assetAmount then Right(()) // TODO: actually lock
       else Left(OrderRejectionReason.InsufficientAssetBalance)
   } yield state

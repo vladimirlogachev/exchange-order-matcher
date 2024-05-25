@@ -66,7 +66,7 @@ object FileApi:
 
     state1 <- ZIO.fromEither(state1Either).mapError(StringFileApiError.ItsFileApiError(_))
 
-    (finalstate, rejectedOrders) <- orders
+    (finalState, rejectedOrders) <- orders
       .run(
         ZSink.foldLeft((state1, Vector.empty[(Order, OrderRejectionReason)]))((acc, order) =>
           val (state, rejectedOrders) = acc
@@ -75,8 +75,11 @@ object FileApi:
             case Left(rejection) => (state, rejectedOrders :+ (order, rejection)) // TODO: reverse the order
         )
       )
-
-  } yield FileApiOutput(finalstate, rejectedOrders)
+    // TODO: remove
+    _ <- Console
+      .printLine(finalState.toString())
+      .mapError(e => StringFileApiError.ItsOtherStreamError(e))
+  } yield FileApiOutput(finalState, rejectedOrders)
 
   def runToBalanceRecords(
       clientBalances: ZStream[Any, StringFileApiError, ClientBalanceRecord],
@@ -118,7 +121,10 @@ object FileApi:
         AssetName("C") -> record.balanceC,
         AssetName("D") -> record.balanceD
       )
-      val allBalances = state.balances.updated(record.clientName, ClientBalances(record.usdBalance, clientBalances))
+      val allBalances = state.balances.updated(
+        record.clientName,
+        ClientBalances(CompoundBalance(free = record.usdBalance, locked = UsdAmount.zero), clientBalances)
+      )
       Right(state.copy(balances = allBalances))
 
   /** Note: A `Set[String]` instead of just `String` can be helpful for lookups and equality checks in unit tests,
@@ -128,7 +134,7 @@ object FileApi:
     case (clientName, clientBalances) =>
       ClientBalanceRecord(
         clientName,
-        clientBalances.usdBalance,
+        totalUsdBalance(clientBalances.usdBalance),
         clientBalances.assetBalances(AssetName("A")),
         clientBalances.assetBalances(AssetName("B")),
         clientBalances.assetBalances(AssetName("C")),
