@@ -7,24 +7,22 @@ import exchange.domain.model.ClientNames._
 import exchange.domain.model.UsdAmounts._
 import zio.prelude._
 
-enum Order:
+enum OrderSide:
+  case Buy
+  case Sell
 
-  case Buy(
-      clientName: ClientName,
-      assetName: AssetName,
-      usdAmount: UsdAmount,
-      assetPrice: AssetPrice
-  )
+final case class Order(
+    clientName: ClientName,
+    side: OrderSide,
+    assetName: AssetName,
+    assetAmount: AssetAmount,
+    assetPrice: AssetPrice
+)
 
-  case Sell(
-      clientName: ClientName,
-      assetName: AssetName,
-      assetAmount: AssetAmount,
-      assetPrice: AssetPrice
-  )
+object Order:
 
-implicit val OrderEqual: Equal[Order] =
-  Equal.default
+  implicit val OrderEqual: Equal[Order] =
+    Equal.default
 
 final case class ClientBalances(
     usdBalance: UsdAmount,
@@ -52,27 +50,37 @@ enum OrderRejectionReason:
   case AssetBalanceNotFound
   case InsufficientUsdBalance
   case InsufficientAssetBalance
+  case TodoError // TODO: remove
+
+implicit val OrderRejectionReasonEqual: Equal[OrderRejectionReason] =
+  Equal.default
 
 object Exchange:
 
   def processOrder(
       order: Order,
       state: ExchangeState
-  ): Either[OrderRejectionReason, ExchangeState] = order match {
-    case Order.Buy(clientName, assetName, usdAmount, assetPrice) =>
+  ): Either[OrderRejectionReason, ExchangeState] = order.side match {
+    case OrderSide.Buy =>
       for {
-        clientBalances <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
-        assetBalance   <- clientBalances.assetBalances.get(assetName).toRight(OrderRejectionReason.AssetBalanceNotFound)
+        clientBalances    <- state.balances.get(order.clientName).toRight(OrderRejectionReason.ClientNotFound)
+        requiredUsdAmount <- order.assetAmount.toUsdAmount(order.assetPrice).toRight(OrderRejectionReason.TodoError)
+
         _ <-
-          if clientBalances.usdBalance >= usdAmount then Right(())
+          if clientBalances.usdBalance >= requiredUsdAmount then Right(())
           else Left(OrderRejectionReason.InsufficientUsdBalance)
         // TODO: implement the rest
-      } yield state
-    case Order.Sell(clientName, assetName, assetAmount, assetPrice) =>
+      } yield state.copy(pendingOrders = order :: state.pendingOrders)
+    case OrderSide.Sell =>
       for {
-        clientBalances <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
-        assetBalance   <- clientBalances.assetBalances.get(assetName).toRight(OrderRejectionReason.AssetBalanceNotFound)
-        _ <- if assetBalance >= assetAmount then Right(()) else Left(OrderRejectionReason.InsufficientAssetBalance)
+        clientBalances <- state.balances.get(order.clientName).toRight(OrderRejectionReason.ClientNotFound)
+        assetBalance <- clientBalances.assetBalances
+          .get(order.assetName)
+          .toRight(OrderRejectionReason.AssetBalanceNotFound)
+        _ <-
+          if assetBalance >= order.assetAmount then Right(()) else Left(OrderRejectionReason.InsufficientAssetBalance)
+        // _              <- Right(println(clientBalances.usdBalance))
+        // _              <- Right(println(usdAmount))
         // TODO: implement the rest
-      } yield state
+      } yield state.copy(pendingOrders = order :: state.pendingOrders)
   }

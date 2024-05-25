@@ -30,27 +30,27 @@ object SyntaxSpec extends ZIOSpecDefault {
       assertTrue(parsingResult === expectedOutput)
       && assertTrue(parsedAndPrintedBack === Some(input))
     },
-    test("Order Buy") {
+    test("Buy Order") {
       val input = "C1	b	A	10	12"
 
       val expectedOutput = for {
-        usdAmount  <- UsdAmount(10)
-        assetPrice <- AssetPrice(12)
-      } yield Order.Buy(ClientName("C1"), AssetName("A"), usdAmount, assetPrice)
+        assetAmount <- AssetAmount(10)
+        assetPrice  <- AssetPrice(12)
+      } yield Order(ClientName("C1"), OrderSide.Buy, AssetName("A"), assetAmount, assetPrice)
 
-      val parsingResult = clientOrderSyntax.parseString(input).toOption
+      val parsingResult = orderSyntax.parseString(input).toOption
 
       assertTrue(parsingResult === expectedOutput)
     },
-    test("Order Sell") {
+    test("Sell Order") {
       val input = "C2	s	A	8	10"
 
       val expectedOutput = for {
         assetAmount <- AssetAmount(8)
         assetPrice  <- AssetPrice(10)
-      } yield Order.Sell(ClientName("C2"), AssetName("A"), assetAmount, assetPrice)
+      } yield Order(ClientName("C2"), OrderSide.Sell, AssetName("A"), assetAmount, assetPrice)
 
-      val parsingResult = clientOrderSyntax.parseString(input).toOption
+      val parsingResult = orderSyntax.parseString(input).toOption
 
       assertTrue(parsingResult === expectedOutput)
     }

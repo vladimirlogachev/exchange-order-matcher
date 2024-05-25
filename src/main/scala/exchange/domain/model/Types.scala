@@ -28,7 +28,10 @@ object UsdAmounts:
 object AssetAmounts:
   opaque type AssetAmount = Int
 
-  extension (x: AssetAmount) def >=(y: AssetAmount): Boolean = x >= y
+  extension (x: AssetAmount) {
+    def toUsdAmount(p: AssetPrices.AssetPrice) = UsdAmounts.UsdAmount(p.unwrap * x)
+    def >=(y: AssetAmount): Boolean            = x >= y
+  }
 
   object AssetAmount:
 
@@ -38,6 +41,10 @@ object AssetAmounts:
 
 object AssetPrices:
   opaque type AssetPrice = Int
+
+  extension (x: AssetPrice) {
+    def unwrap: Int = x
+  }
 
   object AssetPrice:
 

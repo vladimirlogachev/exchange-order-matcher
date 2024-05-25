@@ -96,7 +96,7 @@ object FileApi:
         ),
       orders
         .mapError(StringFileApiError.ItsOtherStreamError(_))
-        .mapZIO(x => ZIO.fromEither(clientOrderSyntax.parseString(x)).mapError(StringFileApiError.ItsParserError(_)))
+        .mapZIO(x => ZIO.fromEither(orderSyntax.parseString(x)).mapError(StringFileApiError.ItsParserError(_)))
     )
 
   def runFromStringsToStrings(
@@ -144,4 +144,19 @@ object FileApi:
           x   <- xE
           acc <- accE
         } yield acc + x
+      )
+
+  def toSimplifiedRejectedOrders(
+      output: FileApiOutput
+  ): Either[StringFileApiError, Vector[(String, OrderRejectionReason)]] =
+    output.rejectedOrders
+      .map { case (x, reason) =>
+        (orderSyntax.printString(x).leftMap(StringFileApiError.ItsPrinterError(_)), reason)
+      }
+      .foldLeft(Right(Vector.empty): Either[StringFileApiError, Vector[(String, OrderRejectionReason)]])((accE, elem) =>
+        val (xE, reason) = elem
+        for {
+          x   <- xE
+          acc <- accE
+        } yield acc :+ (x, reason)
       )
