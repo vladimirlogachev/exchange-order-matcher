@@ -15,19 +15,19 @@ object SyntaxSpec extends ZIOSpecDefault {
   def spec: Spec[Any, Nothing] = suite("Syntax")(
     test("ClientBalanceRecord") {
       val input = "C1	1000	10	5	15	0"
-
-      val expectedOutput = for {
-        usdBalance <- UsdAmount(1000)
-        balanceA   <- AssetAmount(10)
-        balanceB   <- AssetAmount(5)
-        balanceC   <- AssetAmount(15)
-        balanceD   <- AssetAmount(0)
-      } yield ClientBalanceRecord(ClientName("C1"), usdBalance, balanceA, balanceB, balanceC, balanceD)
+      val expectedOutput = ClientBalanceRecord(
+        ClientName("C1"),
+        UsdAmount(1000).get,
+        AssetAmount(10).get,
+        AssetAmount(5).get,
+        AssetAmount(15).get,
+        AssetAmount(0).get
+      )
 
       val parsingResult        = clientBalanceRecordSyntax.parseString(input).toOption
       val parsedAndPrintedBack = parsingResult.flatMap(x => clientBalanceRecordSyntax.printString(x).toOption)
 
-      assertTrue(parsingResult === expectedOutput)
+      assertTrue(parsingResult === Some(expectedOutput))
       && assertTrue(parsedAndPrintedBack === Some(input))
     },
     test("Buy Order") {
@@ -45,14 +45,12 @@ object SyntaxSpec extends ZIOSpecDefault {
     test("Sell Order") {
       val input = "C2	s	A	8	10"
 
-      val expectedOutput = for {
-        assetAmount <- AssetAmount(8)
-        assetPrice  <- AssetPrice(10)
-      } yield Order(ClientName("C2"), OrderSide.Sell, AssetName("A"), assetAmount, assetPrice)
+      val expectedOutput =
+        Order(ClientName("C2"), OrderSide.Sell, AssetName("A"), AssetAmount(8).get, AssetPrice(10).get)
 
       val parsingResult = orderSyntax.parseString(input).toOption
 
-      assertTrue(parsingResult === expectedOutput)
+      assertTrue(parsingResult === Some(expectedOutput))
     }
   )
 
