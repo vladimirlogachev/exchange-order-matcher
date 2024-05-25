@@ -50,18 +50,9 @@ object ExchangeState:
 
 enum OrderRejectionReason:
   case ClientNotFound
-  // TODO: try to get rid of it, because it can't be caused by invalid order string, and so considered an internal error.
-  // Maybe use other errors, e.g.:
-  // InsufficientAssetBalance when failed to sell
-  // InsufficientUsdBalance when failed to buy
-  // or rename to
-  // InternalErrorBalanceNotFoundShouldNeverHappen
-  // or consider missing balance record as zero balance (which is pretty normal) and default to 0
-  // or define getters and setters which default to 0
-  case AssetBalanceNotFound
   case InsufficientUsdBalance
   case InsufficientAssetBalance
-  case TodoError // TODO: remove
+  case UnexpectedInternalError // TODO: consider removing or defining more specific errors
 
 implicit val OrderRejectionReasonEqual: Equal[OrderRejectionReason] =
   Equal.default
@@ -74,24 +65,40 @@ object Exchange:
   ): Either[OrderRejectionReason, ExchangeState] = order.side match {
     case OrderSide.Buy =>
       for {
-        clientBalances    <- state.balances.get(order.clientName).toRight(OrderRejectionReason.ClientNotFound)
-        requiredUsdAmount <- order.assetAmount.toUsdAmount(order.assetPrice).toRight(OrderRejectionReason.TodoError)
-        _ <-
-          if clientBalances.usdBalance >= requiredUsdAmount then Right(())
-          else Left(OrderRejectionReason.InsufficientUsdBalance)
-        orderBook <- state.orders.get(order.assetName).toRight(OrderRejectionReason.TodoError)
-        // TODO: implement the rest
-      } yield state
+        requiredUsdAmount <- order.assetAmount
+          .toUsdAmount(order.assetPrice)
+          .toRight(OrderRejectionReason.UnexpectedInternalError)
+        state1 <- lockUsd(order.clientName, requiredUsdAmount, state)
+        // orderBook <- state.orders.get(order.assetName).toRight(OrderRejectionReason.TodoError)
+      } yield state1
     case OrderSide.Sell =>
       for {
-        clientBalances <- state.balances.get(order.clientName).toRight(OrderRejectionReason.ClientNotFound)
-        assetBalance <- clientBalances.assetBalances
-          .get(order.assetName)
-          .toRight(OrderRejectionReason.AssetBalanceNotFound)
-        _ <-
-          if assetBalance >= order.assetAmount then Right(()) else Left(OrderRejectionReason.InsufficientAssetBalance)
-        // _              <- Right(println(clientBalances.usdBalance))
-        // _              <- Right(println(usdAmount))
-        // TODO: implement the rest
-      } yield state
+        state1 <- lockAsset(order.clientName, order.assetName, order.assetAmount, state)
+      } yield state1
   }
+
+  /** TODO: maybe add orderId to lock assets for? */
+  private def lockUsd(
+      clientName: ClientName,
+      usdAmount: UsdAmount,
+      state: ExchangeState
+  ): Either[OrderRejectionReason, ExchangeState] = for {
+    clientBalances <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
+    _ <-
+      if clientBalances.usdBalance >= usdAmount then Right(()) // TODO: lock
+      else Left(OrderRejectionReason.InsufficientUsdBalance)
+  } yield state
+
+  /** TODO: maybe add orderId to lock assets for? */
+  private def lockAsset(
+      clientName: ClientName,
+      assetName: AssetName,
+      assetAmount: AssetAmount,
+      state: ExchangeState
+  ): Either[OrderRejectionReason, ExchangeState] = for {
+    clientBalances <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
+    assetBalance   <- clientBalances.assetBalances.get(assetName).toRight(OrderRejectionReason.UnexpectedInternalError)
+    _ <-
+      if assetBalance >= assetAmount then Right(()) // TODO: lock
+      else Left(OrderRejectionReason.InsufficientAssetBalance)
+  } yield state
