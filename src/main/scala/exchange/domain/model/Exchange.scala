@@ -29,13 +29,24 @@ final case class ClientBalances(
     assetBalances: Map[AssetName, AssetAmount]
 )
 
+type OrderBook = Vector[Order]
+
 final case class ExchangeState(
     balances: Map[ClientName, ClientBalances], // TODO: locked assets and usd
-    pendingOrders: List[Order]                 // TODO: not a list
+    orders: Map[AssetName, OrderBook]
 )
 
 object ExchangeState:
-  def empty: ExchangeState = ExchangeState(balances = Map.empty, pendingOrders = List.empty)
+
+  def empty: ExchangeState = ExchangeState(
+    balances = Map.empty,
+    orders = Map(
+      AssetName("A") -> Vector.empty,
+      AssetName("B") -> Vector.empty,
+      AssetName("C") -> Vector.empty,
+      AssetName("D") -> Vector.empty
+    )
+  )
 
 enum OrderRejectionReason:
   case ClientNotFound
@@ -65,12 +76,12 @@ object Exchange:
       for {
         clientBalances    <- state.balances.get(order.clientName).toRight(OrderRejectionReason.ClientNotFound)
         requiredUsdAmount <- order.assetAmount.toUsdAmount(order.assetPrice).toRight(OrderRejectionReason.TodoError)
-
         _ <-
           if clientBalances.usdBalance >= requiredUsdAmount then Right(())
           else Left(OrderRejectionReason.InsufficientUsdBalance)
+        orderBook <- state.orders.get(order.assetName).toRight(OrderRejectionReason.TodoError)
         // TODO: implement the rest
-      } yield state.copy(pendingOrders = order :: state.pendingOrders)
+      } yield state
     case OrderSide.Sell =>
       for {
         clientBalances <- state.balances.get(order.clientName).toRight(OrderRejectionReason.ClientNotFound)
@@ -82,5 +93,5 @@ object Exchange:
         // _              <- Right(println(clientBalances.usdBalance))
         // _              <- Right(println(usdAmount))
         // TODO: implement the rest
-      } yield state.copy(pendingOrders = order :: state.pendingOrders)
+      } yield state
   }

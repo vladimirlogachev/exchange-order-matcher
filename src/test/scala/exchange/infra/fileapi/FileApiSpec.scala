@@ -11,7 +11,7 @@ object FileApiSpec extends ZIOSpecDefault {
   def spec: Spec[Any, Nothing] = suite("Simle cases")(
     test("Empty inputs produce empty outputs") {
       val expectedOutput = FileApiOutput(
-        state = ExchangeState(balances = Map.empty, pendingOrders = List.empty),
+        state = ExchangeState.empty,
         rejectedOrders = Vector.empty
       )
       for {
@@ -42,22 +42,22 @@ object FileApiSpec extends ZIOSpecDefault {
     test("Buy order with insufficient USD balance leads to an error") {
       val clientBalances         = ZStream("C1	1000	10	5	15	0")
       val orders                 = ZStream("C1	b	A	10	150")
-      val expectedRejectedOrders = List(("C1	b	A	10	150", OrderRejectionReason.InsufficientUsdBalance))
+      val expectedRejectedOrders = Vector(("C1	b	A	10	150", OrderRejectionReason.InsufficientUsdBalance))
       for {
         outputEither <- FileApi.runFromStrings(clientBalances, orders).either
       } yield {
-        val rejectedOrders = outputEither.flatMap(x => FileApi.toSimplifiedRejectedOrders(x)).map(_.toList)
+        val rejectedOrders = outputEither.flatMap(x => FileApi.toSimplifiedRejectedOrders(x))
         assertTrue(rejectedOrders === Right(expectedRejectedOrders))
       }
     },
     test("Sell order with insufficient USD balance leads to an error") {
       val clientBalances         = ZStream("C2	2000	3	35	40	10")
       val orders                 = ZStream("C2	s	B	40	10")
-      val expectedRejectedOrders = List(("C2	s	B	40	10", OrderRejectionReason.InsufficientAssetBalance))
+      val expectedRejectedOrders = Vector(("C2	s	B	40	10", OrderRejectionReason.InsufficientAssetBalance))
       for {
         outputEither <- FileApi.runFromStrings(clientBalances, orders).either
       } yield {
-        val rejectedOrders = outputEither.flatMap(x => FileApi.toSimplifiedRejectedOrders(x)).map(_.toList)
+        val rejectedOrders = outputEither.flatMap(x => FileApi.toSimplifiedRejectedOrders(x))
         assertTrue(rejectedOrders === Right(expectedRejectedOrders))
       }
     }
