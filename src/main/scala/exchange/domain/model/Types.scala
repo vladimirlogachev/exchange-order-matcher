@@ -35,10 +35,13 @@ object AssetAmounts:
 
   extension (x: AssetAmount) {
     def toUsdAmount(p: AssetPrices.AssetPrice) = UsdAmounts.UsdAmount(p.unwrap * x)
+    def +(y: AssetAmount): AssetAmount         = x + y
+    def -(y: AssetAmount): Option[AssetAmount] = AssetAmount(x - y)
     def >=(y: AssetAmount): Boolean            = x >= y
   }
 
   object AssetAmount:
+    def zero: AssetAmount = 0
 
     def apply(i: Int): Option[AssetAmount] =
       if i >= 0 then Some(i)

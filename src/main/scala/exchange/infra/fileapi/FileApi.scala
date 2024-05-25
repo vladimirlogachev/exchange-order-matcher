@@ -116,14 +116,14 @@ object FileApi:
     if state.balances.contains(record.clientName) then Left(FileApiError.ClientAlreadyExists)
     else
       val clientBalances = Map(
-        AssetName("A") -> record.balanceA,
-        AssetName("B") -> record.balanceB,
-        AssetName("C") -> record.balanceC,
-        AssetName("D") -> record.balanceD
+        AssetName("A") -> CompoundBalance(free = record.balanceA, locked = AssetAmount.zero),
+        AssetName("B") -> CompoundBalance(free = record.balanceB, locked = AssetAmount.zero),
+        AssetName("C") -> CompoundBalance(free = record.balanceC, locked = AssetAmount.zero),
+        AssetName("D") -> CompoundBalance(free = record.balanceD, locked = AssetAmount.zero)
       )
       val allBalances = state.balances.updated(
         record.clientName,
-        ClientBalances(CompoundBalance(free = record.usdBalance, locked = UsdAmount.zero), clientBalances)
+        ClientBalance(CompoundBalance(free = record.usdBalance, locked = UsdAmount.zero), clientBalances)
       )
       Right(state.copy(balances = allBalances))
 
@@ -135,10 +135,10 @@ object FileApi:
       ClientBalanceRecord(
         clientName,
         totalUsdBalance(clientBalances.usdBalance),
-        clientBalances.assetBalances(AssetName("A")),
-        clientBalances.assetBalances(AssetName("B")),
-        clientBalances.assetBalances(AssetName("C")),
-        clientBalances.assetBalances(AssetName("D"))
+        clientBalances.assetBalances.get(AssetName("A")).map(totalAssetBalance).getOrElse(AssetAmount.zero),
+        clientBalances.assetBalances.get(AssetName("B")).map(totalAssetBalance).getOrElse(AssetAmount.zero),
+        clientBalances.assetBalances.get(AssetName("C")).map(totalAssetBalance).getOrElse(AssetAmount.zero),
+        clientBalances.assetBalances.get(AssetName("D")).map(totalAssetBalance).getOrElse(AssetAmount.zero)
       )
   }.toSet
 
