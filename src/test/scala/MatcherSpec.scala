@@ -58,6 +58,20 @@ object MatcherSpec extends ZIOSpecDefault {
         val strBalances = outEither.flatMap(out => balancesToString(toFinalBalances(out.state))).left.map(_.toString)
         assertTrue(strBalances === Right(expectedOutputBalances))
       }
+    },
+    test("Duplicate client name leads to an error") {
+      val balancesStream = balancesFromString(
+        """C1	1000	10	5	15	0
+          |C2	2000	3	35	40	10
+          |C1	500	3	35	40	10
+          |""".stripMargin
+      )
+      val ordersStream = ordersFromString("")
+      for {
+        outEither <- runMatcher(balancesStream, ordersStream).either
+      } yield {
+        assertTrue(outEither === Left(MatcherError.ItsClientLoadError(ClientLoadError.ClientAlreadyExists)))
+      }
     }
   )
 

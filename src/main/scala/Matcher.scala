@@ -35,6 +35,9 @@ def toFinalBalances(state: MatcherState): Seq[ClientBalanceRecord] = state.balan
 enum ClientLoadError:
   case ClientAlreadyExists
 
+implicit val ClientLoadErrorEqual: Equal[ClientLoadError] =
+  Equal.default
+
 def loadClientBalance(
     record: ClientBalanceRecord,
     state: MatcherState
