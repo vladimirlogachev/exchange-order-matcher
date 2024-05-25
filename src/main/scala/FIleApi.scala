@@ -1,25 +1,27 @@
 import exchange.domain.model._
-import AssetAmounts._
-import AssetNames._
-import AssetPrices._
-import ClientNames._
-import UsdAmounts._
+
 import zio._
 import zio.prelude._
 import zio.stream._
 
-final case class ClientBalances(
+import AssetAmounts._
+import AssetNames._
+import ClientNames._
+import UsdAmounts._
+
+final case class ClientBalanceRecord(
+    clientName: ClientName,
     usdBalance: UsdAmount,
-    assetBalances: Map[AssetName, AssetAmount]
+    balanceA: AssetAmount,
+    balanceB: AssetAmount,
+    balanceC: AssetAmount,
+    balanceD: AssetAmount
 )
 
-final case class MatcherState(
-    balances: Map[ClientName, ClientBalances], // TODO: locked assets and usd
-    pendingOrders: List[ClientOrder]           // TODO: not a list
-)
+object ClientBalanceRecord:
 
-object MatcherState:
-  def empty: MatcherState = MatcherState(balances = Map.empty, pendingOrders = List.empty)
+  implicit val ClientBalanceRecordEqual: Equal[ClientBalanceRecord] =
+    Equal.default
 
 /** Note: A `Set[String]` instead of just `String` can be helpful for lookups and equality checks in unit tests, without
   * a need for sorting the output.
@@ -57,58 +59,27 @@ def loadClientBalance(
     val allBalances = state.balances.updated(record.clientName, ClientBalances(record.usdBalance, clientBalances))
     Right(state.copy(balances = allBalances))
 
-enum OrderRejectionReason:
-  case ClientNotFound
-  // TODO: try to get rid of it, e.g.:
-  // InsufficientAssetBalance when failed to sell
-  // create not found for buying
-  case AssetBalanceNotFound
-  case InsufficientUsdBalance
-  case InsufficientAssetBalance
-
-def processOrder(
-    clientOrder: ClientOrder,
-    state: MatcherState
-): Either[OrderRejectionReason, MatcherState] = clientOrder match {
-  case ClientOrder.Buy(clientName, assetName, usdAmount, assetPrice) =>
-    for {
-      clientBalances <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
-      assetBalance   <- clientBalances.assetBalances.get(assetName).toRight(OrderRejectionReason.AssetBalanceNotFound)
-      _ <-
-        if clientBalances.usdBalance >= usdAmount then Right(())
-        else Left(OrderRejectionReason.InsufficientUsdBalance)
-      // TODO: implement the rest
-    } yield state
-  case ClientOrder.Sell(clientName, assetName, assetAmount, assetPrice) =>
-    for {
-      clientBalances <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
-      assetBalance   <- clientBalances.assetBalances.get(assetName).toRight(OrderRejectionReason.AssetBalanceNotFound)
-      _ <- if assetBalance >= assetAmount then Right(()) else Left(OrderRejectionReason.InsufficientAssetBalance)
-      // TODO: implement the rest
-    } yield state
-}
-
-enum MatcherError:
-  case ItsInputStreamError(e: Throwable)
+enum FileApiError:
+  case ItsInputStreamError(e: Throwable) // TODO: remove, it belongs to Cli
   case ItsClientLoadError(e: ClientLoadError)
 
-implicit val MatcherErrorEqual: Equal[MatcherError] =
+implicit val FileApiErrorEqual: Equal[FileApiError] =
   Equal.default
 
-final case class MatcherOutput(
+final case class FileApiOutput(
     state: MatcherState,
     rejectedOrders: List[(ClientOrder, OrderRejectionReason)]
 )
 
-object MatcherOutput:
+object FileApiOutput:
 
-  implicit val MatcherOutputEqual: Equal[MatcherOutput] =
+  implicit val FileApiOutputEqual: Equal[FileApiOutput] =
     Equal.default
 
 def runMatcher(
     clientBalances: ZStream[Any, Throwable, ClientBalanceRecord],
     orders: ZStream[Any, Throwable, ClientOrder]
-): IO[MatcherError, MatcherOutput] = {
+): IO[FileApiError, FileApiOutput] = {
 
   for {
     model1 <- clientBalances
@@ -117,20 +88,20 @@ def runMatcher(
           state.flatMap(loadClientBalance(clientBalance, _))
         )
       )
-      .mapError(MatcherError.ItsInputStreamError(_))
+      .mapError(FileApiError.ItsInputStreamError(_))
     model2 <- ZIO
       .fromEither(model1)
-      .mapError(MatcherError.ItsClientLoadError(_))
+      .mapError(FileApiError.ItsClientLoadError(_))
 
   } yield {
     val rejectedOrders = List.empty[(ClientOrder, OrderRejectionReason)]
     val finalModel     = model2
-    MatcherOutput(finalModel, rejectedOrders)
+    FileApiOutput(finalModel, rejectedOrders)
   }
 }
 
-def outputToClientBalanceStrings(matcherOutput: MatcherOutput): Either[String, Set[String]] =
-  toFinalBalances(matcherOutput.state)
+def outputToClientBalanceStrings(output: FileApiOutput): Either[String, Set[String]] =
+  toFinalBalances(output.state)
     .map(clientBalanceRecordSyntax.printString(_))
     .foldRight(Right(Set.empty): Either[String, Set[String]])((xE, accE) =>
       for {

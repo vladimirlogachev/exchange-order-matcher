@@ -3,6 +3,8 @@ import zio.prelude._
 import zio.stream._
 import zio.test._
 
+import exchange.domain.model.MatcherState
+
 /** Unit testing helper
   */
 def balancesFromString(s: String) = ZStream
@@ -36,14 +38,14 @@ object MatcherSpec extends ZIOSpecDefault {
 
   def spec: Spec[Any, Nothing] = suite("Simle cases")(
     test("Empty inputs produce empty outputs") {
-      val expectedMatcherOutput = MatcherOutput(
+      val expectedFileApiOutput = FileApiOutput(
         state = MatcherState(balances = Map.empty, pendingOrders = List.empty),
         rejectedOrders = List.empty
       )
 
       for {
         out <- runMatcher(ZStream.fromIterable(List.empty), ZStream.fromIterable(List.empty)).either
-      } yield assertTrue(out === Right(expectedMatcherOutput))
+      } yield assertTrue(out === Right(expectedFileApiOutput))
     },
     test("Given input produces expected output") {
       val balancesStream = balancesFromString(
@@ -74,7 +76,7 @@ object MatcherSpec extends ZIOSpecDefault {
           |""".stripMargin
       )
       val ordersStream  = ordersFromString("")
-      val expectedError = MatcherError.ItsClientLoadError(ClientLoadError.ClientAlreadyExists)
+      val expectedError = FileApiError.ItsClientLoadError(ClientLoadError.ClientAlreadyExists)
       for {
         outputEither <- runMatcher(balancesStream, ordersStream).either
       } yield {

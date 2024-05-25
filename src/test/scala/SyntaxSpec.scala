@@ -1,11 +1,12 @@
+import zio.prelude._
+import zio.test._
+
 import exchange.domain.model._
 import AssetAmounts._
 import AssetNames._
 import AssetPrices._
 import ClientNames._
 import UsdAmounts._
-import zio.prelude._
-import zio.test._
 
 object SyntaxSpec extends ZIOSpecDefault {
 

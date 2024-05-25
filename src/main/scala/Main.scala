@@ -1,12 +1,13 @@
 import java.nio.file.Paths
-import exchange.domain.model._
-import ClientNames._
 import zio._
 import zio.stream._
 import zio.prelude._
 
+import exchange.domain.model._
+import ClientNames._
+
 enum ApplicationError:
-  case ItsMatcherError(e: MatcherError)
+  case ItsFileApiError(e: FileApiError)
   case ItsPrinterError(e: String)
   case ItsOutputFileWriteError(e: Throwable)
 
@@ -50,7 +51,7 @@ object Main extends ZIOAppDefault {
   def main = {
     for {
       output <- runMatcher(balancesFromFile("clients.txt"), ordersFromFile("orders.txt"))
-        .mapError(ApplicationError.ItsMatcherError(_))
+        .mapError(ApplicationError.ItsFileApiError(_))
 
       balanceStrings <- ZIO
         .fromEither(outputToClientBalanceStrings(output))
