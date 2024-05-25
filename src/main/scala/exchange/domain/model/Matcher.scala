@@ -31,27 +31,32 @@ final case class ClientBalances(
     assetBalances: Map[AssetName, AssetAmount]
 )
 
-final case class MatcherState(
+final case class ExchangeState(
     balances: Map[ClientName, ClientBalances], // TODO: locked assets and usd
     pendingOrders: List[ClientOrder]           // TODO: not a list
 )
 
-object MatcherState:
-  def empty: MatcherState = MatcherState(balances = Map.empty, pendingOrders = List.empty)
+object ExchangeState:
+  def empty: ExchangeState = ExchangeState(balances = Map.empty, pendingOrders = List.empty)
 
 enum OrderRejectionReason:
   case ClientNotFound
-  // TODO: try to get rid of it, e.g.:
+  // TODO: try to get rid of it, because it can't be caused by invalid order string, and so considered an internal error.
+  // Maybe use other errors, e.g.:
   // InsufficientAssetBalance when failed to sell
-  // create not found for buying
+  // InsufficientUsdBalance when failed to buy
+  // or rename to
+  // InternalErrorBalanceNotFoundShouldNeverHappen
+  // or consider missing balance record as zero balance (which is pretty normal) and default to 0
+  // or define getters and setters which default to 0
   case AssetBalanceNotFound
   case InsufficientUsdBalance
   case InsufficientAssetBalance
 
 def processOrder(
-    clientOrder: ClientOrder,
-    state: MatcherState
-): Either[OrderRejectionReason, MatcherState] = clientOrder match {
+    order: ClientOrder,
+    state: ExchangeState
+): Either[OrderRejectionReason, ExchangeState] = order match {
   case ClientOrder.Buy(clientName, assetName, usdAmount, assetPrice) =>
     for {
       clientBalances <- state.balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)

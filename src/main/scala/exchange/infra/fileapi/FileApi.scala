@@ -42,8 +42,8 @@ implicit val StringFileApiErrorEqual: Equal[StringFileApiError] =
   Equal.default
 
 final case class FileApiOutput(
-    state: MatcherState,
-    rejectedOrders: List[(ClientOrder, OrderRejectionReason)]
+    state: ExchangeState,
+    rejectedOrders: Vector[(ClientOrder, OrderRejectionReason)]
 )
 
 object FileApiOutput:
@@ -57,20 +57,26 @@ object FileApi:
       clientBalances: ZStream[Any, StringFileApiError, ClientBalanceRecord],
       orders: ZStream[Any, StringFileApiError, ClientOrder]
   ): IO[StringFileApiError, FileApiOutput] = for {
-    state1 <- clientBalances
+    state1Either <- clientBalances
       .run(
-        ZSink.foldLeft(Right(MatcherState.empty): Either[Nothing, MatcherState])((state, clientBalance) =>
+        ZSink.foldLeft(Right(ExchangeState.empty): Either[Nothing, ExchangeState])((state, clientBalance) =>
           state.flatMap(loadClientBalance(clientBalance, _))
         )
       )
 
-    state2 <- ZIO.fromEither(state1).mapError(StringFileApiError.ItsFileApiError(_))
+    state1 <- ZIO.fromEither(state1Either).mapError(StringFileApiError.ItsFileApiError(_))
 
-  } yield {
-    val rejectedOrders = List.empty[(ClientOrder, OrderRejectionReason)]
-    val finalstate     = state2
-    FileApiOutput(finalstate, rejectedOrders)
-  }
+    (finalstate, rejectedOrders) <- orders
+      .run(
+        ZSink.foldLeft((state1, Vector.empty[(ClientOrder, OrderRejectionReason)]))((acc, order) =>
+          val (state, rejectedOrders) = acc
+          processOrder(order, state) match
+            case Right(newState) => (newState, rejectedOrders)
+            case Left(rejection) => (state, rejectedOrders :+ (order, rejection)) // TODO: reverse the order
+        )
+      )
+
+  } yield FileApiOutput(finalstate, rejectedOrders)
 
   def runToBalanceRecords(
       clientBalances: ZStream[Any, StringFileApiError, ClientBalanceRecord],
@@ -102,8 +108,8 @@ object FileApi:
 
   private def loadClientBalance(
       record: ClientBalanceRecord,
-      state: MatcherState
-  ): Either[FileApiError, MatcherState] =
+      state: ExchangeState
+  ): Either[FileApiError, ExchangeState] =
     if state.balances.contains(record.clientName) then Left(FileApiError.ClientAlreadyExists)
     else
       val clientBalances = Map(
@@ -118,7 +124,7 @@ object FileApi:
   /** Note: A `Set[String]` instead of just `String` can be helpful for lookups and equality checks in unit tests,
     * without a need for sorting the output.
     */
-  private def toFinalBalances(state: MatcherState): Set[ClientBalanceRecord] = state.balances.map {
+  private def toFinalBalances(state: ExchangeState): Set[ClientBalanceRecord] = state.balances.map {
     case (clientName, clientBalances) =>
       ClientBalanceRecord(
         clientName,
@@ -130,7 +136,7 @@ object FileApi:
       )
   }.toSet
 
-  private def toClientBalanceStrings(state: MatcherState): Either[String, Set[String]] =
+  private def toClientBalanceStrings(state: ExchangeState): Either[String, Set[String]] =
     toFinalBalances(state)
       .map(clientBalanceRecordSyntax.printString(_))
       .foldRight(Right(Set.empty): Either[Nothing, Set[String]])((xE, accE) =>

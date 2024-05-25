@@ -1,6 +1,6 @@
 package exchange.infra.fileapi
 
-import exchange.domain.model.MatcherState
+import exchange.domain.model.ExchangeState
 import zio._
 import zio.prelude._
 import zio.stream._
@@ -11,8 +11,8 @@ object FileApiSpec extends ZIOSpecDefault {
   def spec: Spec[Any, Nothing] = suite("Simle cases")(
     test("Empty inputs produce empty outputs") {
       val expectedFileApiOutput = FileApiOutput(
-        state = MatcherState(balances = Map.empty, pendingOrders = List.empty),
-        rejectedOrders = List.empty
+        state = ExchangeState(balances = Map.empty, pendingOrders = List.empty),
+        rejectedOrders = Vector.empty
       )
       for {
         out <- FileApi.runFromStrings(ZStream.empty, ZStream.empty).either
