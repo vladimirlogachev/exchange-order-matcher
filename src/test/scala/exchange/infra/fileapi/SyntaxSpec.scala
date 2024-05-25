@@ -1,7 +1,10 @@
+package exchange.infra.fileapi
+
 import zio.prelude._
 import zio.test._
 
 import exchange.domain.model._
+import exchange.infra.fileapi._
 import AssetAmounts._
 import AssetNames._
 import AssetPrices._

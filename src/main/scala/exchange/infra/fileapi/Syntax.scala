@@ -1,4 +1,7 @@
+package exchange.infra.fileapi
+
 import zio.parser._
+
 import exchange.domain.model._
 import ClientNames._
 import AssetNames._
