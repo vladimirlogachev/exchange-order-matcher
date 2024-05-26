@@ -6,6 +6,8 @@ import exchange.domain.model.AssetPrices._
 import exchange.domain.model.ClientNames._
 import exchange.domain.model.UsdAmounts._
 import zio.prelude._
+import scala.collection.immutable.TreeMap
+import scala.collection.immutable.Queue
 
 enum OrderSide:
   case Buy
@@ -24,7 +26,7 @@ object Order:
   implicit val OrderEqual: Equal[Order] =
     Equal.default
 
-case class CompoundBalance[A](
+final case class CompoundBalance[A](
     free: A,
     locked: A
 )
@@ -53,7 +55,35 @@ final case class ClientBalance(
     assetBalances: Map[AssetName, CompoundBalance[AssetAmount]]
 )
 
-type OrderBook = Vector[Order]
+final case class OrderBook(
+    buyOrders: TreeMap[AssetPrice, Queue[Order]],
+    sellOrders: TreeMap[AssetPrice, Queue[Order]]
+)
+
+object OrderBook {
+
+  def empty: OrderBook = OrderBook(
+    buyOrders = TreeMap.empty,
+    sellOrders = TreeMap.empty
+  )
+
+  def insertBuyOrder(order: Order, book: OrderBook): OrderBook = {
+    val newBuyOrders = book.buyOrders.updatedWith(order.assetPrice) {
+      case None    => Some(Queue(order))
+      case Some(q) => Some(q.enqueue(order))
+    }
+    book.copy(buyOrders = newBuyOrders)
+  }
+
+  def insertSellOrder(order: Order, book: OrderBook): OrderBook = {
+    val newSellOrders = book.sellOrders.updatedWith(order.assetPrice) {
+      case None    => Some(Queue(order))
+      case Some(q) => Some(q.enqueue(order))
+    }
+    book.copy(sellOrders = newSellOrders)
+  }
+
+}
 
 final case class ExchangeState(
     balances: Map[ClientName, ClientBalance],
@@ -65,10 +95,10 @@ object ExchangeState:
   def empty: ExchangeState = ExchangeState(
     balances = Map.empty,
     orders = Map(
-      AssetName("A") -> Vector.empty,
-      AssetName("B") -> Vector.empty,
-      AssetName("C") -> Vector.empty,
-      AssetName("D") -> Vector.empty
+      AssetName("A") -> OrderBook.empty,
+      AssetName("B") -> OrderBook.empty,
+      AssetName("C") -> OrderBook.empty,
+      AssetName("D") -> OrderBook.empty
     )
   )
 

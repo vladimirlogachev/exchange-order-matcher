@@ -56,6 +56,9 @@ object AssetPrices:
 
   object AssetPrice:
 
+    given Ordering[AssetPrice] with
+      def compare(x: AssetPrice, y: AssetPrice): Int = x.compare(y)
+
     def apply(i: Int): Option[AssetPrice] =
       if i > 0 then Some(i)
       else None
