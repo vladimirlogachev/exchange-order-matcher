@@ -52,6 +52,9 @@ object AssetPrices:
 
   extension (x: AssetPrice) {
     def unwrap: Int = x
+
+    def <=(y: AssetPrice): Boolean = x <= y
+    def >=(y: AssetPrice): Boolean = x >= y
   }
 
   object AssetPrice:
