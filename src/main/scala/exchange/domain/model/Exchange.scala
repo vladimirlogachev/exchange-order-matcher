@@ -7,7 +7,7 @@ import exchange.domain.model.ClientNames._
 import exchange.domain.model.UsdAmounts._
 import zio.prelude.Equal
 import scala.collection.immutable.TreeMap
-import scala.collection.immutable.Queue
+import scalaz.Dequeue
 
 enum OrderSide:
   case Buy
@@ -55,9 +55,15 @@ final case class ClientBalance(
     assetBalances: Map[AssetName, CompoundBalance[AssetAmount]]
 )
 
+/** Note on scalaz's Dequeue naming:
+  *   - snoc(a: A): Dequeue[A] – enqueue on to the back of the queue (similar to `enqueue` in Queue)
+  *   - uncons: Maybe[(A, Dequeue[A])] – dequeue from the front of the queue (similar to `dequeueOption` in Queue)
+  *   - cons(a: A): Dequeue[A] – enqueue to the front of the queue (when putting partially filled order back) (unique to
+  *     Dequeue)
+  */
 final case class OrderBook(
-    buyOrders: TreeMap[AssetPrice, Queue[Order]],
-    sellOrders: TreeMap[AssetPrice, Queue[Order]]
+    buyOrders: TreeMap[AssetPrice, Dequeue[Order]],
+    sellOrders: TreeMap[AssetPrice, Dequeue[Order]]
 )
 
 object OrderBook {
@@ -69,16 +75,16 @@ object OrderBook {
 
   def insertBuyOrder(order: Order, book: OrderBook): OrderBook = {
     val newBuyOrders = book.buyOrders.updatedWith(order.assetPrice) {
-      case None    => Some(Queue(order))
-      case Some(q) => Some(q.enqueue(order))
+      case None         => Some(Dequeue(order))
+      case Some(orders) => Some(orders.snoc(order))
     }
     book.copy(buyOrders = newBuyOrders)
   }
 
   def insertSellOrder(order: Order, book: OrderBook): OrderBook = {
     val newSellOrders = book.sellOrders.updatedWith(order.assetPrice) {
-      case None    => Some(Queue(order))
-      case Some(q) => Some(q.enqueue(order))
+      case None         => Some(Dequeue(order))
+      case Some(orders) => Some(orders.snoc(order))
     }
     book.copy(sellOrders = newSellOrders)
   }
@@ -95,11 +101,10 @@ object OrderBook {
     book.sellOrders.headOption match {
       case Some((lowestAvailablePrice, orders)) if lowestAvailablePrice <= maxPrice =>
         // Note: price found and matches our requirement
-        orders.dequeueOption match {
+        orders.uncons.toOption match {
           case None =>
             // Note The order queue for given price turned out to be empty.
             // Remove the price with an empty queue from the Map and make a recursive call
-            // TODO: consider using NonEmptyQueue to avoid this extra check
             dequeueMatchingSellOrder(maxPrice, book.copy(sellOrders = book.sellOrders - lowestAvailablePrice))
           case Some((order, remainingOrders)) =>
             // There is at least one matching order.
@@ -123,11 +128,10 @@ object OrderBook {
     book.buyOrders.lastOption match {
       case Some((lowestAvailablePrice, orders)) if lowestAvailablePrice >= minPrice =>
         // Note: price found and matches our requirement
-        orders.dequeueOption match {
+        orders.uncons.toOption match {
           case None =>
             // Note The order queue for given price turned out to be empty.
             // Remove the price with an empty queue from the Map and make a recursive call
-            // TODO: consider using NonEmptyQueue to avoid this extra check
             dequeueMatchingBuyOrder(minPrice, book.copy(buyOrders = book.buyOrders - lowestAvailablePrice))
           case Some((order, remainingOrders)) =>
             // There is at least one matching order.
