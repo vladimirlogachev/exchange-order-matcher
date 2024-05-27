@@ -6,8 +6,9 @@ object ClientNames:
   opaque type ClientName = String
 
   object ClientName:
-    def apply(s: String): ClientName  = s
-    def unwrap(s: ClientName): String = s
+    implicit val ClientNameEqual: Equal[ClientName] = Equal.default
+    def apply(s: String): ClientName                = s
+    def unwrap(s: ClientName): String               = s
 
 object AssetNames:
   opaque type AssetName = String
