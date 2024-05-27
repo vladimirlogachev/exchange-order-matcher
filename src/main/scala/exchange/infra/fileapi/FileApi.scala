@@ -76,9 +76,9 @@ object FileApi:
         )
       )
     // TODO: remove
-    _ <- Console
-      .printLine(finalState.toString())
-      .mapError(e => StringFileApiError.ItsOtherStreamError(e))
+    // _ <- Console
+    //   .printLine(finalState.toString())
+    //   .mapError(e => StringFileApiError.ItsOtherStreamError(e))
   } yield FileApiOutput(finalState, rejectedOrders)
 
   def runToBalanceRecords(

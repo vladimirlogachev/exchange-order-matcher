@@ -1,5 +1,7 @@
 package exchange.domain.model
 
+import zio.prelude.Equal
+
 object ClientNames:
   opaque type ClientName = String
 
@@ -38,14 +40,20 @@ object AssetAmounts:
     def +(y: AssetAmount): AssetAmount         = x + y
     def -(y: AssetAmount): Option[AssetAmount] = AssetAmount(x - y)
     def >=(y: AssetAmount): Boolean            = x >= y
+    def >(y: AssetAmount): Boolean             = x > y
+    def <(y: AssetAmount): Boolean             = x < y
   }
 
   object AssetAmount:
+    implicit val AssetAmountEqual: Equal[AssetAmount] = Equal.default
+
     def zero: AssetAmount = 0
 
     def apply(i: Int): Option[AssetAmount] =
       if i >= 0 then Some(i)
       else None
+
+    def min(x: AssetAmount, y: AssetAmount): AssetAmount = Math.min(x, y)
 
 object AssetPrices:
   opaque type AssetPrice = Int
