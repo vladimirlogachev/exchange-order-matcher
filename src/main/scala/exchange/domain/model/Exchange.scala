@@ -228,10 +228,11 @@ object Exchange {
             } yield state2
           case Some((matchingSellOrder, remainingBook)) => {
             // Note: Matching order found. Process the order.
-            val res = tradeBuyFromFreeSellFromLocked(buyOrder, matchingSellOrder, remainingBook, state)
+            val state1 = state.copy(orders = state.orders.updated(buyOrder.assetName, remainingBook))
+            val res    = tradeBuyFromFreeSellFromLocked(buyOrder, matchingSellOrder, state1)
             res match {
-              case Right((None, state1))                  => Right(state1)
-              case Right((Some(updatedBuyOrder), state1)) => recursiveBuy(updatedBuyOrder, state1)
+              case Right((None, state2))                  => Right(state2)
+              case Right((Some(updatedBuyOrder), state2)) => recursiveBuy(updatedBuyOrder, state2)
               case Left(rejection)                        => Left(rejection)
             }
           }
@@ -258,10 +259,11 @@ object Exchange {
             } yield state2
           case Some((matchingBuyOrder, remainingBook)) => {
             // Note: Matching order found. Process the order.
-            val res = tradeBuyFromLockedSellFromFree(sellOrder, matchingBuyOrder, remainingBook, state)
+            val state1 = state.copy(orders = state.orders.updated(sellOrder.assetName, remainingBook))
+            val res    = tradeBuyFromLockedSellFromFree(sellOrder, matchingBuyOrder, state1)
             res match {
-              case Right((None, state1))                   => Right(state1)
-              case Right((Some(updatedSellOrder), state1)) => recursiveSell(updatedSellOrder, state1)
+              case Right((None, state2))                   => Right(state2)
+              case Right((Some(updatedSellOrder), state2)) => recursiveSell(updatedSellOrder, state2)
               case Left(rejection)                         => Left(rejection)
             }
           }
@@ -273,7 +275,6 @@ object Exchange {
   def tradeBuyFromFreeSellFromLocked(
       buyOrder: Order,
       matchingSellOrder: Order,
-      remainingBook: OrderBook,
       state: ExchangeState
   ): Either[OrderRejectionReason, (Option[Order], ExchangeState)] = {
     // Note: The price from the book wins. Locked assets will always be enough and there will be no leftovers.
@@ -319,9 +320,12 @@ object Exchange {
             updatedMatchingAmount <- (matchingSellOrder.assetAmount - tradeAssetAmount)
               .toRight(OrderRejectionReason.UnexpectedInternalError)
             updatedMatchingOrder = matchingSellOrder.copy(assetAmount = updatedMatchingAmount)
+            orderBookForAsset <- state1.orders
+              .get(buyOrder.assetName)
+              .toRight(OrderRejectionReason.UnexpectedInternalError)
             state2 = state1.copy(
               orders = state1.orders
-                .updated(assetName, OrderBook.requeueSellOrder(updatedMatchingOrder, remainingBook))
+                .updated(assetName, OrderBook.requeueSellOrder(updatedMatchingOrder, orderBookForAsset))
             )
           } yield (None, state2)
         } else {
@@ -341,7 +345,6 @@ object Exchange {
   def tradeBuyFromLockedSellFromFree(
       sellOrder: Order,
       matchingBuyOrder: Order,
-      remainingBook: OrderBook,
       state: ExchangeState
   ): Either[OrderRejectionReason, (Option[Order], ExchangeState)] = {
     // Note: The price from the book wins. Locked assets will always be enough and there will be no leftovers.
@@ -388,9 +391,12 @@ object Exchange {
             updatedMatchingAmount <- (matchingBuyOrder.assetAmount - tradeAssetAmount)
               .toRight(OrderRejectionReason.UnexpectedInternalError)
             updatedMatchingOrder = matchingBuyOrder.copy(assetAmount = updatedMatchingAmount)
+            orderBookForAsset <- state1.orders
+              .get(sellOrder.assetName)
+              .toRight(OrderRejectionReason.UnexpectedInternalError)
             state2 = state1.copy(
               orders = state1.orders
-                .updated(assetName, OrderBook.requeueBuyOrder(updatedMatchingOrder, remainingBook))
+                .updated(assetName, OrderBook.requeueBuyOrder(updatedMatchingOrder, orderBookForAsset))
             )
           } yield (None, state2)
         } else {

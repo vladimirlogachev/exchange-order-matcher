@@ -158,7 +158,7 @@ object FileApiSpec extends ZIOSpecDefault {
       for {
         outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
       } yield {
-        assertTrue(outputEither == Right(expectedFinalBalances))
+        assertTrue(outputEither === Right(expectedFinalBalances))
       }
     },
     test("Full order execution, 2 sell orders, then 1 buy order, same total amount, different price") {
