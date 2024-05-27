@@ -234,6 +234,27 @@ object FileApiSpec extends ZIOSpecDefault {
       } yield {
         assertTrue(outputEither === Right(expectedFinalBalances))
       }
+    },
+    /* ------------------- When client sells anything to themselves, the balance remains unchanged ------------------- */
+    test("Same client, same amount, same price, 1 buy -> 1 sell, balance unchganged") {
+      val clientBalances        = ZStream("C1	100	10	10	10	10")
+      val orders                = ZStream("C1	b	A	2	5", "C1	s	A	2	5")
+      val expectedFinalBalances = Set("C1	100	10	10	10	10")
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
+    },
+    test("Same client, same amount, same price, 1 buy -> 1 sell, balance unchganged") {
+      val clientBalances        = ZStream("C1	100	10	10	10	10")
+      val orders                = ZStream("C1	s	A	2	5", "C1	s	A	2	5")
+      val expectedFinalBalances = Set("C1	100	10	10	10	10")
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
     }
   )
 
