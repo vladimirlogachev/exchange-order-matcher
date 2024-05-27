@@ -29,8 +29,9 @@ object Cli extends ZIOAppDefault:
     _              <- linesToFile("results.txt", balanceStrings).mapError(StringFileApiError.ItsOtherStreamError(_))
   } yield ()
 
-  def run: IO[Throwable, Unit] = for {
-    _ <- Console.printLine("Starting...")
-    _ <- processFiles.mapError(e => new Exception(explainStringFileApiError(e)))
-    _ <- Console.printLine("Done!")
-  } yield ()
+  def run: UIO[ExitCode] = processFiles
+    .tapBoth(
+      e => Console.printLine(s"Error: ${explainStringFileApiError(e)}"),
+      _ => Console.printLine("Done!")
+    )
+    .exitCode
