@@ -1,2 +1,3 @@
-C1	b	A	1	1
-C2	s	A	1	1
+C1	b	A	1	5
+C3	b	A	1	6
+C2	s	A	2	5
