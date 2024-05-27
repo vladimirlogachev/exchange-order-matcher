@@ -253,7 +253,7 @@ object Exchange {
               // Note: No (more) matching orders found. Put the (remaining) order in the book.
               state1 <- lockClientAsset(sellOrder.clientName, sellOrder.assetName, sellOrder.assetAmount, state)
               state2 = state1.copy(
-                orders = state1.orders.updated(sellOrder.assetName, OrderBook.insertBuyOrder(sellOrder, book))
+                orders = state1.orders.updated(sellOrder.assetName, OrderBook.insertSellOrder(sellOrder, book))
               )
             } yield state2
           case Some((matchingBuyOrder, remainingBook)) => {

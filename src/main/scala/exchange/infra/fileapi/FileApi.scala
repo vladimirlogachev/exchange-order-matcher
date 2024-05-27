@@ -75,10 +75,21 @@ object FileApi:
             case Left(rejection) => (state, rejectedOrders :+ (order, rejection)) // TODO: reverse the order
         )
       )
-    // TODO: remove
-    // _ <- Console
-    //   .printLine(finalState.toString())
-    //   .mapError(e => StringFileApiError.ItsOtherStreamError(e))
+
+    // _ <- {
+    //   // TODO: remove
+    //   for {
+    //     _ <- Console.printLine("\nBuy orders for A:")
+    //     _ <- Console.printLine(finalState.orders(AssetName("A")).buyOrders.map(_.toString).mkString("\n"))
+
+    //     _ <- Console.printLine("\nSell orders for A:")
+    //     _ <- Console.printLine(finalState.orders(AssetName("A")).sellOrders.map(_.toString).mkString("\n"))
+
+    //     _ <- Console.printLine("\nRejected orders:")
+    //     _ <- Console.printLine(rejectedOrders.map(_.toString).mkString("\n"))
+    //   } yield ()
+    // }.mapError(e => StringFileApiError.ItsOtherStreamError(e))
+
   } yield FileApiOutput(finalState, rejectedOrders)
 
   def runToBalanceRecords(
