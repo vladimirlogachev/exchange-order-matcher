@@ -20,15 +20,15 @@ final case class ClientBalanceRecord(
 )
 
 object ClientBalanceRecord:
-
   implicit val ClientBalanceRecordEqual: Equal[ClientBalanceRecord] =
     Equal.default
 
 enum FileApiError:
   case ClientAlreadyExists
 
-implicit val FileApiErrorEqual: Equal[FileApiError] =
-  Equal.default
+object FileApiError:
+  implicit val FileApiErrorEqual: Equal[FileApiError] =
+    Equal.default
 
 def explainFileApiError(err: FileApiError): String = err match
   case FileApiError.ClientAlreadyExists => "Client already exists"
@@ -58,12 +58,10 @@ final case class FileApiOutput(
 )
 
 object FileApiOutput:
-
   implicit val FileApiOutputEqual: Equal[FileApiOutput] =
     Equal.default
 
 object FileApi:
-
   def run(
       clientBalances: ZStream[Any, StringFileApiError, ClientBalanceRecord],
       orders: ZStream[Any, StringFileApiError, Order]
@@ -86,21 +84,6 @@ object FileApi:
             case Left(rejection) => (state, rejectedOrders :+ (order, rejection))
         )
       )
-
-    // _ <- {
-    //   // TODO: remove
-    //   for {
-    //     _ <- Console.printLine("\nBuy orders for A:")
-    //     _ <- Console.printLine(finalState.orders(AssetName("A")).buyOrders.map(_.toString).mkString("\n"))
-
-    //     _ <- Console.printLine("\nSell orders for A:")
-    //     _ <- Console.printLine(finalState.orders(AssetName("A")).sellOrders.map(_.toString).mkString("\n"))
-
-    //     _ <- Console.printLine("\nRejected orders:")
-    //     _ <- Console.printLine(rejectedOrders.map(_.toString).mkString("\n"))
-    //   } yield ()
-    // }.mapError(e => StringFileApiError.ItsOtherStreamError(e))
-
   } yield FileApiOutput(finalState, rejectedOrders)
 
   def runToBalanceRecords(
