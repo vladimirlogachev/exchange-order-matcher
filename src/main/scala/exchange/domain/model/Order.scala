@@ -4,6 +4,7 @@ import exchange.domain.model.AssetAmounts._
 import exchange.domain.model.AssetNames._
 import exchange.domain.model.AssetPrices._
 import exchange.domain.model.ClientNames._
+import exchange.domain.model.UsdAmounts._
 import zio.prelude.Equal
 
 enum OrderSide:
@@ -16,7 +17,9 @@ final case class Order(
     assetName: AssetName,
     assetAmount: AssetAmount,
     assetPrice: AssetPrice
-)
+) {
+  def usdAmount: Option[UsdAmount] = assetAmount.toUsdAmount(assetPrice)
+}
 
 object Order:
   implicit val OrderEqual: Equal[Order] =
