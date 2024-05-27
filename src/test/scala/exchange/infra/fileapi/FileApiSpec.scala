@@ -9,15 +9,19 @@ import zio.test._
 object FileApiSpec extends ZIOSpecDefault {
 
   def spec: Spec[Any, Nothing] = suite("Simle cases")(
-    test("Empty inputs produce empty outputs") {
-      val expectedOutput = FileApiOutput(
-        state = ExchangeState.empty,
-        rejectedOrders = Vector.empty
-      )
+    /* ------------------- Example cases, "as is", just in case ------------------- */
+    test("Provided example 1: from file format description") {
+      val clientBalances = ZStream("C1	1000	10	5	15	0", "C2	2000	3	35	40	10")
+      // Note: the only sell order is rejected because of insufficient asset balance
+      val orders                = ZStream("C1	b	A	10	12", "C2	s	A	8	10")
+      val expectedFinalBalances = Set("C1	1000	10	5	15	0", "C2	2000	3	35	40	10")
       for {
-        out <- FileApi.runFromStrings(ZStream.empty, ZStream.empty).either
-      } yield assertTrue(out === Right(expectedOutput))
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
     },
+    /* ------------------- Client balances causing errors ------------------- */
     test("Duplicate client name leads to an error") {
       val clientBalances = ZStream("C1	1000	10	5	15	0", "C2	2000	3	35	40	10", "C1	500	3	35	40	10")
       val orders         = ZStream.empty
@@ -28,6 +32,8 @@ object FileApiSpec extends ZIOSpecDefault {
         assertTrue(outputEither === Left(expectedError))
       }
     },
+
+    /* ------------------- Orders being rejected ------------------- */
     test("Buy order with insufficient USD balance leads to an error") {
       val clientBalances         = ZStream("C1	1000	10	5	15	0")
       val orders                 = ZStream("C1	b	A	10	150")
@@ -50,6 +56,18 @@ object FileApiSpec extends ZIOSpecDefault {
         assertTrue(rejectedOrders === Right(expectedRejectedOrders))
       }
     },
+    /* ------------------- Orders not being filled ------------------- */
+
+    test("Empty inputs produce empty outputs") {
+      val expectedOutput = FileApiOutput(
+        state = ExchangeState.empty,
+        rejectedOrders = Vector.empty
+      )
+      for {
+        out <- FileApi.runFromStrings(ZStream.empty, ZStream.empty).either
+      } yield assertTrue(out === Right(expectedOutput))
+    },
+    /* ------------------- Orders being filled, fully or partially ------------------- */
     test("Full order execution, 1 buy order, then 1 sell order, exact match") {
       val clientBalances        = ZStream("C1	100	10	10	10	10", "C2	100	10	10	10	10")
       val orders                = ZStream("C1	b	A	2	5", "C2	s	A	2	5")
@@ -60,21 +78,10 @@ object FileApiSpec extends ZIOSpecDefault {
         assertTrue(outputEither === Right(expectedFinalBalances))
       }
     },
-    test("Full order execution, 1 sel order, then 1 buy order, exact match") {
+    test("Full order execution, 1 sell order, then 1 buy order, exact match") {
       val clientBalances        = ZStream("C1	100	10	10	10	10", "C2	100	10	10	10	10")
       val orders                = ZStream("C2	s	A	2	5", "C1	b	A	2	5")
       val expectedFinalBalances = Set("C1	90	12	10	10	10", "C2	110	8	10	10	10")
-      for {
-        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
-      } yield {
-        assertTrue(outputEither === Right(expectedFinalBalances))
-      }
-    },
-    test("Provided example 1: from file format description") {
-      val clientBalances = ZStream("C1	1000	10	5	15	0", "C2	2000	3	35	40	10")
-      // Note: the only sell order is rejected because of insufficient asset balance
-      val orders                = ZStream("C1	b	A	10	12", "C2	s	A	8	10")
-      val expectedFinalBalances = Set("C1	1000	10	5	15	0", "C2	2000	3	35	40	10")
       for {
         outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
       } yield {
