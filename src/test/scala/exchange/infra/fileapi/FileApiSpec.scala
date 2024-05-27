@@ -67,7 +67,7 @@ object FileApiSpec extends ZIOSpecDefault {
         out <- FileApi.runFromStrings(ZStream.empty, ZStream.empty).either
       } yield assertTrue(out === Right(expectedOutput))
     },
-    /* ------------------- Orders being filled, fully or partially ------------------- */
+    /* ------------------- 1 order can be filled by 1 other, same price ------------------- */
     test("Full order execution, 1 buy order, then 1 sell order, exact match") {
       val clientBalances        = ZStream("C1	100	10	10	10	10", "C2	100	10	10	10	10")
       val orders                = ZStream("C1	b	A	2	5", "C2	s	A	2	5")
@@ -81,6 +81,47 @@ object FileApiSpec extends ZIOSpecDefault {
     test("Full order execution, 1 sell order, then 1 buy order, exact match") {
       val clientBalances        = ZStream("C1	100	10	10	10	10", "C2	100	10	10	10	10")
       val orders                = ZStream("C2	s	A	2	5", "C1	b	A	2	5")
+      val expectedFinalBalances = Set("C1	90	12	10	10	10", "C2	110	8	10	10	10")
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
+    },
+    /* ------------------- 1 order can be filled by 2 others, same price ------------------- */
+    test("Full order execution, 1 buy order, then 2 sell orders, same price") {
+      val clientBalances        = ZStream("C1	100	10	10	10	10", "C2	100	10	10	10	10")
+      val orders                = ZStream("C1	b	A	2	5", "C2	s	A	1	5", "C2	s	A	1	5")
+      val expectedFinalBalances = Set("C1	90	12	10	10	10", "C2	110	8	10	10	10")
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
+    },
+    test("Full order execution, 2 buy orders, then 1 sell order, same price") {
+      val clientBalances        = ZStream("C1	100	10	10	10	10", "C2	100	10	10	10	10")
+      val orders                = ZStream("C1	b	A	1	5", "C1	b	A	1	5", "C2	s	A	2	5")
+      val expectedFinalBalances = Set("C1	90	12	10	10	10", "C2	110	8	10	10	10")
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
+    },
+    test("Full order execution, 1 sell order, then 2 buy orders, same price") {
+      val clientBalances        = ZStream("C1	100	10	10	10	10", "C2	100	10	10	10	10")
+      val orders                = ZStream("C2	s	A	2	5", "C1	b	A	1	5", "C1	b	A	1	5")
+      val expectedFinalBalances = Set("C1	90	12	10	10	10", "C2	110	8	10	10	10")
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
+    },
+    test("Full order execution, 2 sell orders, then 1 buy order, same price") {
+      val clientBalances        = ZStream("C1	100	10	10	10	10", "C2	100	10	10	10	10")
+      val orders                = ZStream("C2	s	A	1	5", "C2	s	A	1	5", "C1	b	A	2	5")
       val expectedFinalBalances = Set("C1	90	12	10	10	10", "C2	110	8	10	10	10")
       for {
         outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
