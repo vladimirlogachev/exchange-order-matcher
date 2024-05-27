@@ -83,7 +83,7 @@ object FileApi:
           val (state, rejectedOrders) = acc
           Exchange.processOrder(order, state) match
             case Right(newState) => (newState, rejectedOrders)
-            case Left(rejection) => (state, rejectedOrders :+ (order, rejection)) // TODO: reverse the order
+            case Left(rejection) => (state, rejectedOrders :+ (order, rejection))
         )
       )
 

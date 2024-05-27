@@ -10,11 +10,53 @@ object FileApiSpec extends ZIOSpecDefault {
 
   def spec: Spec[Any, Nothing] = suite("Simle cases")(
     /* ------------------- Example cases, "as is", just in case ------------------- */
-    test("Provided example 1: from file format description") {
+    test("Provided example 1: file format description") {
       val clientBalances = ZStream("C1	1000	10	5	15	0", "C2	2000	3	35	40	10")
-      // Note: the only sell order is rejected because of insufficient asset balance
-      val orders                = ZStream("C1	b	A	10	12", "C2	s	A	8	10")
+      val orders         = ZStream("C1	b	A	10	12", "C2	s	A	8	10")
+      // Note: The only sell order is rejected because of insufficient asset balance.
+      // So, balances are unchanged.
       val expectedFinalBalances = Set("C1	1000	10	5	15	0", "C2	2000	3	35	40	10")
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
+    },
+    test("Provided example 2: rejected orders with insufficient client balances") {
+      val clientBalances = ZStream("C1	1000	10	5	15	0", "C2	2000	3	35	40	10")
+      val orders         = ZStream("C1	b	A	10	150", "C2	s	B	40	10")
+      // Note: Order 1 is rejected because C1 does not have enough USD to buy 10 of "A" assets at $150.
+      // Order 2 is rejected because C2 has only the amount 35 of a "B" asset.
+      // So, balances are unchanged.
+      val expectedFinalBalances = Set("C1	1000	10	5	15	0", "C2	2000	3	35	40	10")
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
+    },
+    test("Provided example 3: partial order filling") {
+      val clientBalances = ZStream("C1	1000	10	10	10	10", "C2	1000	10	10	10	10")
+      val orders         = ZStream("C1	b	A	10	12", "C2	s	A	8	10")
+      // Note: Orders 1 and 2 are partially matched:
+      // Order 2 is completely filled,
+      // Order 1 is partially filled and its state changed to `C1	b	A	2	12`.
+      // TODO: Check the remaining order in the orderBook, convert orderBook to Vector[String]
+      val expectedFinalBalances = Set("C1	904	18	10	10	10", "C2	1096	2	10	10	10")
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
+    },
+    test("Provided example 4: Order fillin order: by price, and then by time (earliest first)") {
+      val clientBalances = ZStream("C1	1000	20	20	20	20", "C2	1000	20	20	20	20", "C3	1000	20	20	20	20")
+      val orders         = ZStream("C1	b	A	10	10", "C2	b	A	10	10", "C3	s	A	15	10")
+
+      // Note: Orders 3 and 1 will be matched first, Order 1 will be fully settled
+      // Then the remainder of Order 3 will be matched with order 2.
+      // TODO: Check the remaining order in the orderBook, convert orderBook to Vector[String]
+      val expectedFinalBalances = Set("C1	900	30	20	20	20", "C2	950	25	20	20	20", "C3	1150	5	20	20	20")
       for {
         outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
       } yield {
