@@ -5,8 +5,8 @@ import exchange.domain.model.AssetNames._
 import exchange.domain.model.AssetPrices._
 import exchange.domain.model.ClientNames._
 import exchange.domain.model.UsdAmounts._
-import zio.prelude.Equal
 import scalaz.Dequeue
+import zio.prelude.Equal
 import zio.prelude.EqualOps
 
 enum OrderRejectionReason:
@@ -92,19 +92,6 @@ final case class ExchangeState(
       case Left(rejection)                       => Left(rejection)
     }
 
-  private def buyStep(buyOrder: Order): Either[OrderRejectionReason, (Option[Order], ExchangeState)] = for {
-    maybeX <- dequeueMatchingSellOrder(buyOrder.assetName, buyOrder.assetPrice)
-    res <- maybeX match {
-      case None =>
-        // Note: No (more) matching orders found. Put the (remaining) order in the book.
-        self.insertBuyOrder(buyOrder).map((None, _))
-      case Some((matchingSellOrder, state1)) => {
-        // Note: Matching order found. Process the order.
-        tradeBuyFromFreeSellFromLocked(buyOrder, matchingSellOrder, state1)
-      }
-    }
-  } yield res
-
   /** This function is called recursively until the order is fully filled or there are no (more) matching orders.
     *
     * Note: this function uses pattern matching insead of for comprehension to allow for a tail call.
@@ -117,26 +104,31 @@ final case class ExchangeState(
       case Left(rejection)                        => Left(rejection)
     }
 
-  private def sellStep(sellOrder: Order): Either[OrderRejectionReason, (Option[Order], ExchangeState)] =
-    orders.get(sellOrder.assetName) match {
-      case None => Left(OrderRejectionReason.UnexpectedInternalError)
-      case Some(book) =>
-        OrderBook.dequeueMatchingBuyOrder(sellOrder.assetPrice, book) match {
-          case None =>
-            for {
-              // Note: No (more) matching orders found. Put the (remaining) order in the book.
-              state1 <- lockClientAsset(sellOrder.clientName, sellOrder.assetName, sellOrder.assetAmount)
-              state2 = state1.copy(
-                orders = state1.orders.updated(sellOrder.assetName, OrderBook.insertSellOrder(sellOrder, book))
-              )
-            } yield (None, state2)
-          case Some((matchingBuyOrder, remainingBook)) => {
-            // Note: Matching order found. Process the order.
-            val state1 = self.copy(orders = orders.updated(sellOrder.assetName, remainingBook))
-            tradeBuyFromLockedSellFromFree(sellOrder, matchingBuyOrder, state1)
-          }
-        }
+  private def buyStep(buyOrder: Order): Either[OrderRejectionReason, (Option[Order], ExchangeState)] = for {
+    maybeOrder <- dequeueMatchingSellOrder(buyOrder.assetName, buyOrder.assetPrice)
+    res <- maybeOrder match {
+      case None =>
+        // Note: No (more) matching orders found. Put the (remaining) order in the book.
+        self.insertBuyOrder(buyOrder).map((None, _))
+      case Some((matchingSellOrder, state1)) => {
+        // Note: Matching order found. Process the order.
+        tradeBuyFromFreeSellFromLocked(buyOrder, matchingSellOrder, state1)
+      }
     }
+  } yield res
+
+  private def sellStep(sellOrder: Order): Either[OrderRejectionReason, (Option[Order], ExchangeState)] = for {
+    maybeOrder <- dequeueMatchingBuyOrder(sellOrder.assetName, sellOrder.assetPrice)
+    res <- maybeOrder match {
+      case None =>
+        // Note: No (more) matching orders found. Put the (remaining) order in the book.
+        self.insertSellOrder(sellOrder).map((None, _))
+      case Some((matchingBuyOrder, state1)) => {
+        // Note: Matching order found. Process the order.
+        tradeBuyFromLockedSellFromFree(sellOrder, matchingBuyOrder, state1)
+      }
+    }
+  } yield res
 
   /** Note: Errors are considered unexpected here, because all checks should have already passed before this method.
     */
@@ -279,30 +271,6 @@ final case class ExchangeState(
     } yield out
   }
 
-  private def lockClientUsd(
-      clientName: ClientName,
-      usdAmount: UsdAmount
-  ): Either[OrderRejectionReason, ExchangeState] = for {
-    clientBalance <- balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
-    newUsdFree    <- (clientBalance.usdBalance.free - usdAmount).toRight(OrderRejectionReason.InsufficientUsdBalance)
-    newUsdBalance    = CompoundBalance(free = newUsdFree, locked = clientBalance.usdBalance.locked + usdAmount)
-    newClientBalance = clientBalance.copy(usdBalance = newUsdBalance)
-  } yield self.copy(balances = balances.updated(clientName, newClientBalance))
-
-  private def lockClientAsset(
-      clientName: ClientName,
-      assetName: AssetName,
-      assetAmount: AssetAmount
-  ): Either[OrderRejectionReason, ExchangeState] = for {
-    clientBalance <- balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
-    assetBalance  <- clientBalance.assetBalances.get(assetName).toRight(OrderRejectionReason.UnexpectedInternalError)
-    newAssetFree  <- (assetBalance.free - assetAmount).toRight(OrderRejectionReason.InsufficientAssetBalance)
-    newAssetBalance = CompoundBalance(free = newAssetFree, locked = assetBalance.locked + assetAmount)
-    newClientBalance = clientBalance.copy(assetBalances =
-      clientBalance.assetBalances.updated(assetName, newAssetBalance)
-    )
-  } yield self.copy(balances = balances.updated(clientName, newClientBalance))
-
   /** This function will be called (outside) until the order is fully filled or the queue is empty
     *
     *   - Nothing = there are no orders with given price or better
@@ -341,7 +309,45 @@ final case class ExchangeState(
         }
     }
 
-  /** For newly added order
+  /** This function will be called (outside) until the order is fully filled or the queue is empty
+    *
+    *   - Nothing = there are no orders with given price or better
+    *   - Some((order, remainingOrderBook)) = there is an order for given price or better, and the updated orderBook
+    *
+    * Note: this function uses pattern matching insead of for comprehension to allow for a tail call.
+    */
+  @annotation.tailrec
+  def dequeueMatchingBuyOrder(
+      assetName: AssetName,
+      minPrice: AssetPrice
+  ): Either[OrderRejectionReason, Option[(Order, ExchangeState)]] =
+    orders.get(assetName) match {
+      case None => Left(OrderRejectionReason.UnexpectedInternalError)
+      case Some(book) =>
+        book.buyOrders.lastOption match {
+          case Some((lowestAvailablePrice, queue)) if lowestAvailablePrice >= minPrice =>
+            // Note: price found and matches our requirement
+            queue.uncons.toOption match {
+              case None =>
+                // Note The order queue for given price turned out to be empty.
+                // Remove the price with an empty queue from the Map and make a recursive call
+                val updatedBook = book.copy(buyOrders = book.buyOrders - lowestAvailablePrice)
+                val state1      = self.copy(orders = orders.updated(assetName, updatedBook))
+                state1.dequeueMatchingBuyOrder(assetName, minPrice)
+              case Some((order, remainingOrders)) =>
+                // There is at least one matching order.
+                val updatedBook = book.copy(buyOrders = book.buyOrders.updated(lowestAvailablePrice, remainingOrders))
+                val state1      = self.copy(orders = orders.updated(assetName, updatedBook))
+                Right(Some(order, state1))
+            }
+          case _ =>
+            // Note: The lowest available price doesn't match our requirement, or the are no more orders.
+            // No need to continue searching.
+            Right(None)
+        }
+    }
+
+  /** For newly added order. Locks usd.
     */
   def insertBuyOrder(order: Order): Either[OrderRejectionReason, ExchangeState] = for {
     requiredUsdAmount <- order.assetAmount
@@ -354,6 +360,41 @@ final case class ExchangeState(
       case Some(orders) => Some(orders.snoc(order))
     }
   } yield state1.copy(orders = orders.updated(order.assetName, book.copy(buyOrders = newBuyOrders)))
+
+  /** For newly added order. Locks assets.
+    */
+  def insertSellOrder(order: Order): Either[OrderRejectionReason, ExchangeState] = for {
+    state1 <- lockClientAsset(order.clientName, order.assetName, order.assetAmount)
+    book   <- orders.get(order.assetName).toRight(OrderRejectionReason.UnexpectedInternalError)
+    newSellOrders = book.sellOrders.updatedWith(order.assetPrice) {
+      case None         => Some(Dequeue(order))
+      case Some(orders) => Some(orders.snoc(order))
+    }
+  } yield state1.copy(orders = orders.updated(order.assetName, book.copy(sellOrders = newSellOrders)))
+
+  private def lockClientUsd(
+      clientName: ClientName,
+      usdAmount: UsdAmount
+  ): Either[OrderRejectionReason, ExchangeState] = for {
+    clientBalance <- balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
+    newUsdFree    <- (clientBalance.usdBalance.free - usdAmount).toRight(OrderRejectionReason.InsufficientUsdBalance)
+    newUsdBalance    = CompoundBalance(free = newUsdFree, locked = clientBalance.usdBalance.locked + usdAmount)
+    newClientBalance = clientBalance.copy(usdBalance = newUsdBalance)
+  } yield self.copy(balances = balances.updated(clientName, newClientBalance))
+
+  private def lockClientAsset(
+      clientName: ClientName,
+      assetName: AssetName,
+      assetAmount: AssetAmount
+  ): Either[OrderRejectionReason, ExchangeState] = for {
+    clientBalance <- balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
+    assetBalance  <- clientBalance.assetBalances.get(assetName).toRight(OrderRejectionReason.UnexpectedInternalError)
+    newAssetFree  <- (assetBalance.free - assetAmount).toRight(OrderRejectionReason.InsufficientAssetBalance)
+    newAssetBalance = CompoundBalance(free = newAssetFree, locked = assetBalance.locked + assetAmount)
+    newClientBalance = clientBalance.copy(assetBalances =
+      clientBalance.assetBalances.updated(assetName, newAssetBalance)
+    )
+  } yield self.copy(balances = balances.updated(clientName, newClientBalance))
 
 }
 
