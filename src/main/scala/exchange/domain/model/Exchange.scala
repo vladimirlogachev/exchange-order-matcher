@@ -179,6 +179,7 @@ enum OrderRejectionReason:
   case ClientNotFound
   case InsufficientUsdBalance
   case InsufficientAssetBalance
+  case InvalidAssetAmount
   case UnexpectedInternalError // TODO: consider removing or defining more specific errors
 
 implicit val OrderRejectionReasonEqual: Equal[OrderRejectionReason] =
@@ -192,6 +193,7 @@ object Exchange {
   ): Either[OrderRejectionReason, ExchangeState] = order.side match {
     case OrderSide.Buy =>
       for {
+        _ <- checkIfOrderHasNonZeroAmount(order)
         requiredUsdAmount <- order.assetAmount
           .toUsdAmount(order.assetPrice)
           .toRight(OrderRejectionReason.UnexpectedInternalError)
@@ -200,6 +202,7 @@ object Exchange {
       } yield state1
     case OrderSide.Sell =>
       for {
+        _      <- checkIfOrderHasNonZeroAmount(order)
         _      <- checkIfClientHasEnoughFreeAsset(order.clientName, order.assetName, order.assetAmount, state)
         state1 <- recursiveSell(order, state)
       } yield state1
@@ -410,6 +413,11 @@ object Exchange {
       }
     } yield out
   }
+
+  private def checkIfOrderHasNonZeroAmount(order: Order): Either[OrderRejectionReason, Unit] =
+    if order.assetAmount === AssetAmount.zero
+    then Left(OrderRejectionReason.InvalidAssetAmount)
+    else Right(())
 
   private def checkIfClientHasEnoughFreeUsd(
       clientName: ClientName,

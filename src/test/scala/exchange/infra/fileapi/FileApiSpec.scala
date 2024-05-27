@@ -34,7 +34,7 @@ object FileApiSpec extends ZIOSpecDefault {
     },
 
     /* ------------------- Orders being rejected ------------------- */
-    test("Buy order with insufficient USD balance leads to an error") {
+    test("Buy order of client with insufficient USD balance is rejected") {
       val clientBalances         = ZStream("C1	1000	10	5	15	0")
       val orders                 = ZStream("C1	b	A	10	150")
       val expectedRejectedOrders = Vector(("C1	b	A	10	150", OrderRejectionReason.InsufficientUsdBalance))
@@ -45,10 +45,32 @@ object FileApiSpec extends ZIOSpecDefault {
         assertTrue(rejectedOrders === Right(expectedRejectedOrders))
       }
     },
-    test("Sell order with insufficient asset balance leads to an error") {
+    test("Sell order of client with insufficient asset balance is rejected") {
       val clientBalances         = ZStream("C2	2000	3	35	40	10")
       val orders                 = ZStream("C2	s	B	40	10")
       val expectedRejectedOrders = Vector(("C2	s	B	40	10", OrderRejectionReason.InsufficientAssetBalance))
+      for {
+        outputEither <- FileApi.runFromStrings(clientBalances, orders).either
+      } yield {
+        val rejectedOrders = outputEither.flatMap(x => FileApi.toSimplifiedRejectedOrders(x))
+        assertTrue(rejectedOrders === Right(expectedRejectedOrders))
+      }
+    },
+    test("Buy order with zero assetAmount is rejected") {
+      val clientBalances         = ZStream("C1	100	10	10	10	10")
+      val orders                 = ZStream("C1	b	A	0	5")
+      val expectedRejectedOrders = Vector(("C1	b	A	0	5", OrderRejectionReason.InvalidAssetAmount))
+      for {
+        outputEither <- FileApi.runFromStrings(clientBalances, orders).either
+      } yield {
+        val rejectedOrders = outputEither.flatMap(x => FileApi.toSimplifiedRejectedOrders(x))
+        assertTrue(rejectedOrders === Right(expectedRejectedOrders))
+      }
+    },
+    test("Sell order with zero assetAmount is rejected") {
+      val clientBalances         = ZStream("C1	100	10	10	10	10")
+      val orders                 = ZStream("C1	s	A	0	5")
+      val expectedRejectedOrders = Vector(("C1	s	A	0	5", OrderRejectionReason.InvalidAssetAmount))
       for {
         outputEither <- FileApi.runFromStrings(clientBalances, orders).either
       } yield {
