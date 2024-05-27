@@ -81,7 +81,7 @@ object FileApi:
       .run(
         ZSink.foldLeft((state1, Vector.empty[(Order, OrderRejectionReason)]))((acc, order) =>
           val (state, rejectedOrders) = acc
-          Exchange.processOrder(order, state) match
+          state.processOrder(order) match
             case Right(newState) => (newState, rejectedOrders)
             case Left(rejection) => (state, rejectedOrders :+ (order, rejection))
         )
@@ -162,11 +162,23 @@ object FileApi:
     case (clientName, clientBalances) =>
       ClientBalanceRecord(
         clientName,
-        totalUsdBalance(clientBalances.usdBalance),
-        clientBalances.assetBalances.get(AssetName("A")).map(totalAssetBalance).getOrElse(AssetAmount.zero),
-        clientBalances.assetBalances.get(AssetName("B")).map(totalAssetBalance).getOrElse(AssetAmount.zero),
-        clientBalances.assetBalances.get(AssetName("C")).map(totalAssetBalance).getOrElse(AssetAmount.zero),
-        clientBalances.assetBalances.get(AssetName("D")).map(totalAssetBalance).getOrElse(AssetAmount.zero)
+        CompoundBalance.totalUsdBalance(clientBalances.usdBalance),
+        clientBalances.assetBalances
+          .get(AssetName("A"))
+          .map(CompoundBalance.totalAssetBalance)
+          .getOrElse(AssetAmount.zero),
+        clientBalances.assetBalances
+          .get(AssetName("B"))
+          .map(CompoundBalance.totalAssetBalance)
+          .getOrElse(AssetAmount.zero),
+        clientBalances.assetBalances
+          .get(AssetName("C"))
+          .map(CompoundBalance.totalAssetBalance)
+          .getOrElse(AssetAmount.zero),
+        clientBalances.assetBalances
+          .get(AssetName("D"))
+          .map(CompoundBalance.totalAssetBalance)
+          .getOrElse(AssetAmount.zero)
       )
   }.toSet
 
