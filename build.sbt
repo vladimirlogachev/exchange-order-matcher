@@ -6,6 +6,7 @@ lazy val root = project
     name         := "exchange-matcher",
     version      := "0.1.0-SNAPSHOT",
     scalaVersion := scala3Version,
+    run / fork   := true, // Makes exit codes work as expected
     libraryDependencies ++= Seq(
       "dev.zio"    %% "zio"          % "2.1.1",
       "dev.zio"    %% "zio-streams"  % "2.1.1",
