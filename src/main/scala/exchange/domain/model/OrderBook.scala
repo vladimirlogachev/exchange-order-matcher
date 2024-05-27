@@ -18,30 +18,8 @@ final case class OrderBook(
     sellOrders: TreeMap[AssetPrice, Dequeue[Order]]
 )
 
-private object OrderBook {
+private object OrderBook:
   def empty: OrderBook = OrderBook(
     buyOrders = TreeMap.empty,
     sellOrders = TreeMap.empty
   )
-
-  /** For partially filled order previously taken from the book
-    */
-  def requeueBuyOrder(order: Order, book: OrderBook): OrderBook = {
-    val newBuyOrders = book.buyOrders.updatedWith(order.assetPrice) {
-      case None         => Some(Dequeue(order))
-      case Some(orders) => Some(orders.cons(order))
-    }
-    book.copy(buyOrders = newBuyOrders)
-  }
-
-  /** For partially filled order previously taken from the book
-    */
-  def requeueSellOrder(order: Order, book: OrderBook): OrderBook = {
-    val newSellOrders = book.sellOrders.updatedWith(order.assetPrice) {
-      case None         => Some(Dequeue(order))
-      case Some(orders) => Some(orders.cons(order))
-    }
-    book.copy(sellOrders = newSellOrders)
-  }
-
-}

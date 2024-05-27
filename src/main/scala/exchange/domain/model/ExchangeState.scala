@@ -168,7 +168,7 @@ final case class ExchangeState(
           .updated(buyOrder.clientName, newBuyerBalance)
           .updated(matchingSellOrder.clientName, newSellerBalance)
       )
-      out <- {
+      res <- {
         if (buyOrder.assetAmount === matchingSellOrder.assetAmount) then {
           // Note: The order is fully filled by another matching order
           // No orders are going into the book.
@@ -183,10 +183,7 @@ final case class ExchangeState(
             orderBookForAsset <- state1.orders
               .get(buyOrder.assetName)
               .toRight(OrderRejectionReason.UnexpectedInternalError)
-            state2 = state1.copy(
-              orders = state1.orders
-                .updated(assetName, OrderBook.requeueSellOrder(updatedMatchingOrder, orderBookForAsset))
-            )
+            state2 <- state1.requeueSellOrder(updatedMatchingOrder)
           } yield (None, state2)
         } else {
           // Note: The order is partially filled by another existing order, and we need to make a recursive call.
@@ -197,7 +194,7 @@ final case class ExchangeState(
           } yield (Some(updatedOrder), state1)
         }
       }
-    } yield out
+    } yield res
   }
 
   /** Note: Errors are considered unexpected here, because all checks should have already passed before this method.
@@ -239,7 +236,7 @@ final case class ExchangeState(
           .updated(matchingBuyOrder.clientName, newBuyerBalance)
           .updated(sellOrder.clientName, newSellerBalance)
       )
-      out <- {
+      res <- {
         if (sellOrder.assetAmount === matchingBuyOrder.assetAmount) then {
           // Note: The order is fully filled by another matching order
           // No orders are going into the book.
@@ -254,10 +251,7 @@ final case class ExchangeState(
             orderBookForAsset <- state1.orders
               .get(sellOrder.assetName)
               .toRight(OrderRejectionReason.UnexpectedInternalError)
-            state2 = state1.copy(
-              orders = state1.orders
-                .updated(assetName, OrderBook.requeueBuyOrder(updatedMatchingOrder, orderBookForAsset))
-            )
+            state2 <- state1.requeueBuyOrder(updatedMatchingOrder)
           } yield (None, state2)
         } else {
           // Note: The order is partially filled by another existing order, and we need to make a recursive call.
@@ -268,7 +262,7 @@ final case class ExchangeState(
           } yield (Some(updatedOrder), state1)
         }
       }
-    } yield out
+    } yield res
   }
 
   /** This function will be called (outside) until the order is fully filled or the queue is empty
@@ -371,6 +365,26 @@ final case class ExchangeState(
       case Some(orders) => Some(orders.snoc(order))
     }
   } yield state1.copy(orders = orders.updated(order.assetName, book.copy(sellOrders = newSellOrders)))
+
+  /** For partially filled order previously taken from the book
+    */
+  def requeueBuyOrder(order: Order): Either[OrderRejectionReason, ExchangeState] = for {
+    book <- orders.get(order.assetName).toRight(OrderRejectionReason.UnexpectedInternalError)
+    newBuyOrders = book.buyOrders.updatedWith(order.assetPrice) {
+      case None         => Some(Dequeue(order))
+      case Some(orders) => Some(orders.cons(order))
+    }
+  } yield self.copy(orders = orders.updated(order.assetName, book.copy(buyOrders = newBuyOrders)))
+
+  /** For partially filled order previously taken from the book
+    */
+  def requeueSellOrder(order: Order): Either[OrderRejectionReason, ExchangeState] = for {
+    book <- orders.get(order.assetName).toRight(OrderRejectionReason.UnexpectedInternalError)
+    newSellOrders = book.sellOrders.updatedWith(order.assetPrice) {
+      case None         => Some(Dequeue(order))
+      case Some(orders) => Some(orders.cons(order))
+    }
+  } yield self.copy(orders = orders.updated(order.assetName, book.copy(sellOrders = newSellOrders)))
 
   private def lockClientUsd(
       clientName: ClientName,
