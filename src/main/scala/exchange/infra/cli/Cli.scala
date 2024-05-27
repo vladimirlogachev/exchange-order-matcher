@@ -31,7 +31,11 @@ object Cli extends ZIOAppDefault:
 
   def run: UIO[Unit] = processFiles
     .tapBoth(
-      e => Console.printLine(s"Error: ${explainStringFileApiError(e)}"),
+      e =>
+        Console.printLine(
+          s"""|Error:
+              |${explainStringFileApiError(e)}""".stripMargin
+        ),
       _ => Console.printLine("Done!")
     )
     .exitCode

@@ -30,13 +30,24 @@ enum FileApiError:
 implicit val FileApiErrorEqual: Equal[FileApiError] =
   Equal.default
 
+def explainFileApiError(err: FileApiError): String = err match
+  case FileApiError.ClientAlreadyExists => "Client already exists"
+
 enum StringFileApiError:
   case ItsOtherStreamError(e: Throwable)
-  case ItsParserError(e: ParserError[String])
+  case ItsParserError(s: String, e: ParserError[String])
   case ItsPrinterError(e: String)
   case ItsFileApiError(e: FileApiError)
 
-def explainStringFileApiError(e: StringFileApiError): String = e.toString() // TODO: implement
+def explainStringFileApiError(err: StringFileApiError): String = err match
+  case StringFileApiError.ItsOtherStreamError(e) => s"Stream error: ${e.getMessage}"
+  case StringFileApiError.ItsParserError(s, e) => s"""|Failed to parse: $s
+                                                      |${explainParserError(e)}""".stripMargin
+
+  case StringFileApiError.ItsPrinterError(e) => s"""|Failed to print:
+                                                    |$e""".stripMargin
+
+  case StringFileApiError.ItsFileApiError(e) => explainFileApiError(e)
 
 implicit val StringFileApiErrorEqual: Equal[StringFileApiError] =
   Equal.default
@@ -105,12 +116,18 @@ object FileApi:
     run(
       clientBalances
         .mapError(StringFileApiError.ItsOtherStreamError(_))
-        .mapZIO(x =>
-          ZIO.fromEither(clientBalanceRecordSyntax.parseString(x)).mapError(StringFileApiError.ItsParserError(_))
+        .mapZIO(s =>
+          ZIO
+            .fromEither(clientBalanceRecordSyntax.parseString(s))
+            .mapError(e => StringFileApiError.ItsParserError(s, e))
         ),
       orders
         .mapError(StringFileApiError.ItsOtherStreamError(_))
-        .mapZIO(x => ZIO.fromEither(orderSyntax.parseString(x)).mapError(StringFileApiError.ItsParserError(_)))
+        .mapZIO(s =>
+          ZIO
+            .fromEither(orderSyntax.parseString(s))
+            .mapError(e => StringFileApiError.ItsParserError(s, e))
+        )
     )
 
   def runFromStringsToStrings(

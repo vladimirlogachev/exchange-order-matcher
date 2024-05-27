@@ -6,7 +6,34 @@ import exchange.domain.model.AssetPrices._
 import exchange.domain.model.ClientNames._
 import exchange.domain.model.UsdAmounts._
 import exchange.domain.model._
+import zio.parser.Parser.ParserError
 import zio.parser._
+
+def explainParserError(err: ParserError[String]): String = err match
+  case ParserError.Failure(nameStack, position, failure) =>
+    s"""|As: ${nameStack.reverse.mkString(".")}
+        |Position: $position
+        |Reason: $failure""".stripMargin
+
+  case ParserError.UnknownFailure(nameStack, position) =>
+    s"""|As: ${nameStack.reverse.mkString(".")}
+        |Position: $position
+        |Reason: Unknown failure""".stripMargin
+
+  case ParserError.UnexpectedEndOfInput =>
+    "Reason: Unexpected end of input"
+
+  case ParserError.NotConsumedAll(lastFailure) =>
+    s"""|Reason: Not consumed all
+        |Last Failure: ${lastFailure.map(explainParserError)}""".stripMargin
+
+  case ParserError.AllBranchesFailed(left, right) =>
+    s"""|Reason: All branches failed
+        |Left:
+        | ${explainParserError(left)}
+        |
+        |Right: 
+        |${explainParserError(right)}""".stripMargin
 
 val tabChar = Syntax.char('\t')
 
