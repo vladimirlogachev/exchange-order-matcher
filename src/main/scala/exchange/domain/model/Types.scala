@@ -20,7 +20,7 @@ object AssetNames:
 object UsdAmounts:
   /** Note: Must be greater than or equal to 0
     */
-  opaque type UsdAmount = Int
+  opaque type UsdAmount = BigInt
 
   extension (x: UsdAmount) {
     def +(y: UsdAmount): UsdAmount         = x + y
@@ -31,14 +31,16 @@ object UsdAmounts:
   object UsdAmount:
     def zero: UsdAmount = 0
 
-    def apply(i: Int): Option[UsdAmount] =
+    def apply(i: BigInt): Option[UsdAmount] =
       if i >= 0 then Some(i)
       else None
+
+    def fromString(s: String): Option[UsdAmount] = bigIntFromString(s).flatMap(UsdAmount(_))
 
 object AssetAmounts:
   /** Note: Must be greater than or equal to 0
     */
-  opaque type AssetAmount = Int
+  opaque type AssetAmount = BigInt
 
   extension (x: AssetAmount) {
     def toUsdAmount(p: AssetPrices.AssetPrice) = UsdAmounts.UsdAmount(p.unwrap * x)
@@ -54,11 +56,13 @@ object AssetAmounts:
 
     def zero: AssetAmount = 0
 
-    def apply(i: Int): Option[AssetAmount] =
+    def apply(i: BigInt): Option[AssetAmount] =
       if i >= 0 then Some(i)
       else None
 
-    def min(x: AssetAmount, y: AssetAmount): AssetAmount = Math.min(x, y)
+    def fromString(s: String): Option[AssetAmount] = bigIntFromString(s).flatMap(AssetAmount(_))
+
+    def min(x: AssetAmount, y: AssetAmount): AssetAmount = x.min(y)
 
 object OrderAmounts:
 
@@ -76,19 +80,21 @@ object OrderAmounts:
     def fromAssetAmount(x: AssetAmounts.AssetAmount): Option[OrderAmount] =
       AssetAmounts.AssetAmount(1).flatMap(one => if x >= one then Some(x) else None)
 
-    def apply(i: Int): Option[OrderAmount] =
+    def apply(i: BigInt): Option[OrderAmount] =
       if i >= 1 then AssetAmounts.AssetAmount(i)
       else None
+
+    def fromString(s: String): Option[OrderAmount] = bigIntFromString(s).flatMap(OrderAmount(_))
 
     def min(x: OrderAmount, y: OrderAmount): OrderAmount = AssetAmounts.AssetAmount.min(x, y)
 
 object AssetPrices:
   /** Note: Must be greater than 0
     */
-  opaque type AssetPrice = Int
+  opaque type AssetPrice = BigInt
 
   extension (x: AssetPrice) {
-    def unwrap: Int = x
+    def unwrap: BigInt = x
 
     def <=(y: AssetPrice): Boolean = x <= y
     def >=(y: AssetPrice): Boolean = x >= y
@@ -98,6 +104,16 @@ object AssetPrices:
     given Ordering[AssetPrice] with
       def compare(x: AssetPrice, y: AssetPrice): Int = x.compare(y)
 
-    def apply(i: Int): Option[AssetPrice] =
+    def apply(i: BigInt): Option[AssetPrice] =
       if i > 0 then Some(i)
       else None
+
+    def fromString(s: String): Option[AssetPrice] = bigIntFromString(s).flatMap(AssetPrice(_))
+
+private def bigIntFromString(s: String): Option[BigInt] = {
+  try {
+    Some(BigInt(s))
+  } catch {
+    case _: NumberFormatException => None
+  }
+}

@@ -64,6 +64,55 @@ object FileApiSpec extends ZIOSpecDefault {
         assertTrue(outputEither === Right(expectedFinalBalances))
       }
     },
+    /* ------------------- BigInt ------------------- */
+    test("Supports big values for balances") {
+      val clientBalances = ZStream(
+        "C1	10000000000000000	10000000000000000	0	0	0",
+        "C2	10000000000000000	10000000000000000	0	0	0"
+      )
+      val orders = ZStream("C1	b	A	2	5", "C2	s	A	1	5", "C2	s	A	1	5")
+      val expectedFinalBalances = Set(
+        "C1	9999999999999990	10000000000000002	0	0	0",
+        "C2	10000000000000010	9999999999999998	0	0	0"
+      )
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
+    },
+    test("Supports big values for order price") {
+      val clientBalances = ZStream(
+        "C1	10000000000000000	10000000000000000	0	0	0",
+        "C2	10000000000000000	10000000000000000	0	0	0"
+      )
+      val orders = ZStream("C1	b	A	2	500000000000000", "C2	s	A	1	500000000000000", "C2	s	A	1	500000000000000")
+      val expectedFinalBalances = Set(
+        "C1	9000000000000000	10000000000000002	0	0	0",
+        "C2	11000000000000000	9999999999999998	0	0	0"
+      )
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
+    },
+    test("Supports big values for order amount") {
+      val clientBalances = ZStream(
+        "C1	10000000000000000	10000000000000000	0	0	0",
+        "C2	10000000000000000	10000000000000000	0	0	0"
+      )
+      val orders = ZStream("C1	b	A	200000000000000	5", "C2	s	A	100000000000000	5", "C2	s	A	100000000000000	5")
+      val expectedFinalBalances = Set(
+        "C1	9000000000000000	10200000000000000	0	0	0",
+        "C2	11000000000000000	9800000000000000	0	0	0"
+      )
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
+    },
     /* ------------------- Client balances causing errors ------------------- */
     test("Duplicate client name leads to an error") {
       val clientBalances = ZStream("C1	1000	10	5	15	0", "C2	2000	3	35	40	10", "C1	500	3	35	40	10")

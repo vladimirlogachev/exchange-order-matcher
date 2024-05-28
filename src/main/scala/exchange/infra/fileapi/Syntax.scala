@@ -46,28 +46,28 @@ def explainParserError(err: ParserError[String]): String = err match
 val tabChar = Syntax.char('\t')
 
 val clientNameSyntax: Syntax[String, Char, Char, ClientName] =
-  Syntax.notChar('\t').repeat.string.transform(ClientName.apply, ClientName.unwrap)
+  Syntax.notChar('\t').repeat.string.transform(ClientName(_), ClientName.unwrap)
 
 val assetNameSyntax: Syntax[String, Char, Char, AssetName] =
-  Syntax.notChar('\t').repeat.string.transform(AssetName.apply, AssetName.unwrap)
+  Syntax.notChar('\t').repeat.string.transform(AssetName(_), AssetName.unwrap)
 
 val usdAmountSyntax: Syntax[String, Char, Char, UsdAmount] = Syntax.digit.repeat.string.transformEither(
-  _.toIntOption.flatMap(UsdAmount.apply(_)).toRight("Not a valid USD amount"),
+  UsdAmount.fromString(_).toRight("Not a valid USD amount"),
   v => Right(v.toString)
 ) ?? "UsdAmount"
 
 val assetAmountSyntax: Syntax[String, Char, Char, AssetAmount] = Syntax.digit.repeat.string.transformEither(
-  _.toIntOption.flatMap(AssetAmount.apply(_)).toRight("Not a valid asset amount"),
+  AssetAmount.fromString(_).toRight("Not a valid asset amount"),
   v => Right(v.toString)
 ) ?? "AssetAmount"
 
 val assetPriceSyntax: Syntax[String, Char, Char, AssetPrice] = Syntax.digit.repeat.string.transformEither(
-  _.toIntOption.flatMap(AssetPrice.apply(_)).toRight("Not a valid asset price"),
+  AssetPrice.fromString(_).toRight("Not a valid asset price"),
   v => Right(v.toString)
 ) ?? "AssetPrice"
 
 val orderAmountSyntax: Syntax[String, Char, Char, OrderAmount] = Syntax.digit.repeat.string.transformEither(
-  _.toIntOption.flatMap(OrderAmount.apply(_)).toRight("Not a valid order amount"),
+  OrderAmount.fromString(_).toRight("Not a valid order amount"),
   v => Right(v.toString)
 ) ?? "OrderAmount"
 
