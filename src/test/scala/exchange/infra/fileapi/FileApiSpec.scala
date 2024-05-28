@@ -234,6 +234,46 @@ object FileApiSpec extends ZIOSpecDefault {
       } yield {
         assertTrue(outputEither === Right(expectedFinalBalances))
       }
+    },
+    test("Same client, 1 buy order, then 2 sell orders, same total amount, same price, balance unchganged") {
+      val clientBalances        = ZStream("C1	100	10	10	10	10")
+      val orders                = ZStream("C1	b	A	2	5", "C1	s	A	1	5", "C1	s	A	1	5")
+      val expectedFinalBalances = Set("C1	100	10	10	10	10")
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
+    },
+    test("Same client, 2 buy orders, then 1 sell order, same total amount, same price, balance unchganged") {
+      val clientBalances        = ZStream("C1	100	10	10	10	10")
+      val orders                = ZStream("C1	b	A	1	5", "C1	b	A	1	5", "C1	s	A	2	5")
+      val expectedFinalBalances = Set("C1	100	10	10	10	10")
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
+    },
+    test("Same client, 1 sell order, then 2 buy orders, same total amount, same price, balance unchganged") {
+      val clientBalances        = ZStream("C1	100	10	10	10	10")
+      val orders                = ZStream("C1	s	A	2	5", "C1	b	A	1	5", "C1	b	A	1	5")
+      val expectedFinalBalances = Set("C1	100	10	10	10	10")
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
+    },
+    test("Same client, 2 sell orders, then 1 buy order, same total amount, same price, balance unchganged") {
+      val clientBalances        = ZStream("C1	100	10	10	10	10")
+      val orders                = ZStream("C1	s	A	1	5", "C1	s	A	1	5", "C1	b	A	2	5")
+      val expectedFinalBalances = Set("C1	100	10	10	10	10")
+      for {
+        outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
+      } yield {
+        assertTrue(outputEither === Right(expectedFinalBalances))
+      }
     }
   )
 
