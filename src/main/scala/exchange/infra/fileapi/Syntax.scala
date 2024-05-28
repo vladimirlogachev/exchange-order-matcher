@@ -19,12 +19,12 @@ import exchange.domain.model.UsdAmounts._
   */
 def explainParserError(err: ParserError[String]): String = err match
   case ParserError.Failure(nameStack, position, failure) =>
-    s"""|As: ${nameStack.reverse.mkString(".")}
+    s"""|Failed to parse: ${nameStack.reverse.mkString(".")}
         |Position: $position
         |Reason: $failure""".stripMargin
 
   case ParserError.UnknownFailure(nameStack, position) =>
-    s"""|As: ${nameStack.reverse.mkString(".")}
+    s"""|Failed to parse: ${nameStack.reverse.mkString(".")}
         |Position: $position
         |Reason: Unknown failure""".stripMargin
 
@@ -38,9 +38,9 @@ def explainParserError(err: ParserError[String]): String = err match
   case ParserError.AllBranchesFailed(left, right) =>
     s"""|Reason: All branches failed
         |Left:
-        | ${explainParserError(left)}
+        |${explainParserError(left)}
         |
-        |Right: 
+        |Right:
         |${explainParserError(right)}""".stripMargin
 
 val tabChar = Syntax.char('\t')
@@ -71,7 +71,7 @@ val orderAmountSyntax: Syntax[String, Char, Char, OrderAmount] = Syntax.digit.re
   v => Right(v.toString)
 ) ?? "OrderAmount"
 
-val orderSideSyntax = Syntax.char('b').as(OrderSide.Buy) | Syntax.char('s').as(OrderSide.Sell)
+val orderSideSyntax = (Syntax.char('b').as(OrderSide.Buy) | Syntax.char('s').as(OrderSide.Sell)) ?? "OrderSide"
 
 val orderSyntax: Syntax[String, Char, Char, Order] = {
   val tupleSyntax =

@@ -1,7 +1,8 @@
 package exchange.infra.fileapi
 
 import zio._
-import zio.prelude._
+import zio.prelude.Equal
+import zio.prelude.EqualOps
 import zio.stream._
 import zio.test._
 
