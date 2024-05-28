@@ -6,8 +6,16 @@ import zio.prelude.EqualOps
 import zio.stream._
 import zio.test._
 
+import exchange.domain.model.AssetAmounts._
+import exchange.domain.model.AssetNames._
+import exchange.domain.model.AssetPrices._
+import exchange.domain.model.ClientNames._
 import exchange.domain.model.ExchangeState
+import exchange.domain.model.Order
+import exchange.domain.model.OrderAmounts._
 import exchange.domain.model.OrderRejectionReason
+import exchange.domain.model.OrderSide
+import exchange.domain.model.UsdAmounts._
 
 object FileApiSpec extends ZIOSpecDefault {
 
@@ -344,6 +352,86 @@ object FileApiSpec extends ZIOSpecDefault {
         outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
       } yield {
         assertTrue(outputEither === Right(expectedFinalBalances))
+      }
+    }
+  )
+
+}
+
+object PropertiesSpec extends ZIOSpecDefault {
+
+  val genBigInt =
+    Gen.oneOf(
+      Gen.fromIterable(List(BigInt("1"))),
+      Gen.bigInt(BigInt("2"), BigInt("999")),
+      Gen.bigInt(BigInt("999"), BigInt("999999")),
+      Gen.bigInt(BigInt("999999"), BigInt("9999999999"))
+    )
+
+  val genUsdAmount = genBigInt.map(UsdAmount(_).get)
+
+  val genAssetAmount = genBigInt.map(AssetAmount(_).get)
+
+  val genOrderAmount = genBigInt.map(OrderAmount(_).get)
+
+  val genAssetPrice = genBigInt.map(AssetPrice(_).get)
+
+  val genOrderSide = Gen.elements(OrderSide.Buy, OrderSide.Sell)
+
+  /** Generates one of these values, could be in any order and/or repeated */
+  val genClientNameForOrders: Gen[Any, ClientName] =
+    Gen.elements("C1", "C2", "C3", "C4", "C5").map(ClientName(_))
+
+  val genAssetName: Gen[Any, AssetName] = Gen.fromIterable(List("A", "B", "C", "D")).map(AssetName(_))
+
+  val genClientBalanceValues: Gen[Any, (UsdAmount, AssetAmount, AssetAmount, AssetAmount, AssetAmount)] =
+    for {
+      usdBalance <- genUsdAmount
+      balanceA   <- genAssetAmount
+      balanceB   <- genAssetAmount
+      balanceC   <- genAssetAmount
+      balanceD   <- genAssetAmount
+    } yield (usdBalance, balanceA, balanceB, balanceC, balanceD)
+
+  /* Generates exactly these 5 clients */
+  val genClients = {
+    for {
+      client1 <- genClientBalanceValues.map(x => ClientBalanceRecord(ClientName("C1"), x._1, x._2, x._3, x._4, x._5))
+      client2 <- genClientBalanceValues.map(x => ClientBalanceRecord(ClientName("C2"), x._1, x._2, x._3, x._4, x._5))
+      client3 <- genClientBalanceValues.map(x => ClientBalanceRecord(ClientName("C3"), x._1, x._2, x._3, x._4, x._5))
+      client4 <- genClientBalanceValues.map(x => ClientBalanceRecord(ClientName("C4"), x._1, x._2, x._3, x._4, x._5))
+      client5 <- genClientBalanceValues.map(x => ClientBalanceRecord(ClientName("C5"), x._1, x._2, x._3, x._4, x._5))
+    } yield List(client1, client2, client3, client4, client5)
+  }
+
+  val genOrder = for {
+    clientName <- genClientNameForOrders
+    side       <- genOrderSide
+    assetName  <- genAssetName
+    amount     <- genOrderAmount
+    price      <- genAssetPrice
+  } yield Order(clientName, side, assetName, amount, price)
+
+  def spec = suite("Known invariants")(
+    test(
+      """|The sum of all client balances of USD and of every individual asset
+         |is the same before and after processing any orders""".stripMargin
+    ) {
+      check(genClients, Gen.listOfN(1000)(genOrder)) { (listOfBalances, listOfOrders) =>
+        {
+          val clientBalances = ZStream.fromIterable(listOfBalances)
+          val orders         = ZStream.fromIterable(listOfOrders)
+
+          for {
+            outputEither1 <- FileApi.run(clientBalances, ZStream.empty).either
+            totalBeforeOrders = outputEither1.map(x => x.state.clientBalanceTotal)
+
+            outputEither2 <- FileApi.run(clientBalances, orders).either
+            totalAfterOrders = outputEither2.map(_.state.clientBalanceTotal)
+          } yield {
+            assertTrue(totalBeforeOrders == totalAfterOrders) // scalafix:ok
+          }
+        }
       }
     }
   )
