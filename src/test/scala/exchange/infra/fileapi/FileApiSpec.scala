@@ -1,10 +1,12 @@
 package exchange.infra.fileapi
 
-import exchange.domain.model._
 import zio._
 import zio.prelude._
 import zio.stream._
 import zio.test._
+
+import exchange.domain.model.ExchangeState
+import exchange.domain.model.OrderRejectionReason
 
 object FileApiSpec extends ZIOSpecDefault {
 

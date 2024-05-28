@@ -2,9 +2,10 @@ package exchange.domain.model
 
 import scala.collection.immutable.TreeMap
 
+import scalaz.Dequeue
+
 import exchange.domain.model.AssetAmounts._
 import exchange.domain.model.AssetPrices._
-import scalaz.Dequeue
 
 /** Note on scalaz's Dequeue naming:
   *   - snoc(a: A): Dequeue[A] – enqueue on to the back of the queue (similar to `enqueue` in Queue)

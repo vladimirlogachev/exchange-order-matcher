@@ -2,9 +2,10 @@ package exchange.infra.cli
 
 import java.nio.file.Paths
 
-import exchange.infra.fileapi._
 import zio._
 import zio.stream._
+
+import exchange.infra.fileapi._
 
 object Cli extends ZIOAppDefault:
 

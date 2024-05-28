@@ -1,7 +1,8 @@
 package exchange.domain.model
 
-import exchange.domain.model.AssetAmounts._
 import zio.prelude.Equal
+
+import exchange.domain.model.AssetAmounts._
 
 enum OrderRejectionReason:
   case ClientNotFound

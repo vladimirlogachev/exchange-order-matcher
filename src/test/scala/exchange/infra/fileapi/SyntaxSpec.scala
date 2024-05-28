@@ -1,15 +1,17 @@
 package exchange.infra.fileapi
 
+import zio.prelude._
+import zio.test._
+
 import exchange.domain.model.AssetAmounts._
 import exchange.domain.model.AssetNames._
 import exchange.domain.model.AssetPrices._
 import exchange.domain.model.ClientNames._
+import exchange.domain.model.Order
 import exchange.domain.model.OrderAmounts._
+import exchange.domain.model.OrderSide
 import exchange.domain.model.UsdAmounts._
-import exchange.domain.model._
 import exchange.infra.fileapi._
-import zio.prelude._
-import zio.test._
 
 object SyntaxSpec extends ZIOSpecDefault {
 

@@ -1,14 +1,16 @@
 package exchange.infra.fileapi
 
+import zio.parser.Parser.ParserError
+import zio.parser._
+
 import exchange.domain.model.AssetAmounts._
 import exchange.domain.model.AssetNames._
 import exchange.domain.model.AssetPrices._
 import exchange.domain.model.ClientNames._
+import exchange.domain.model.Order
 import exchange.domain.model.OrderAmounts._
+import exchange.domain.model.OrderSide
 import exchange.domain.model.UsdAmounts._
-import exchange.domain.model._
-import zio.parser.Parser.ParserError
-import zio.parser._
 
 def explainParserError(err: ParserError[String]): String = err match
   case ParserError.Failure(nameStack, position, failure) =>

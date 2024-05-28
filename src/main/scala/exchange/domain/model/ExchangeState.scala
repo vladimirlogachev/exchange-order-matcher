@@ -1,14 +1,15 @@
 package exchange.domain.model
 
+import scalaz.Dequeue
+import zio.prelude.Equal
+import zio.prelude.EqualOps
+
 import exchange.domain.model.AssetAmounts._
 import exchange.domain.model.AssetNames._
 import exchange.domain.model.AssetPrices._
 import exchange.domain.model.ClientNames._
 import exchange.domain.model.OrderAmounts._
 import exchange.domain.model.UsdAmounts._
-import scalaz.Dequeue
-import zio.prelude.Equal
-import zio.prelude.EqualOps
 
 final case class ExchangeState(
     balances: Map[ClientName, ClientBalance],
