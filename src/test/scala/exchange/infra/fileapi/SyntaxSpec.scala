@@ -4,6 +4,7 @@ import exchange.domain.model.AssetAmounts._
 import exchange.domain.model.AssetNames._
 import exchange.domain.model.AssetPrices._
 import exchange.domain.model.ClientNames._
+import exchange.domain.model.OrderAmounts._
 import exchange.domain.model.UsdAmounts._
 import exchange.domain.model._
 import exchange.infra.fileapi._
@@ -33,20 +34,18 @@ object SyntaxSpec extends ZIOSpecDefault {
     test("Buy Order") {
       val input = "C1	b	A	10	12"
 
-      val expectedOutput = for {
-        assetAmount <- AssetAmount(10)
-        assetPrice  <- AssetPrice(12)
-      } yield Order(ClientName("C1"), OrderSide.Buy, AssetName("A"), assetAmount, assetPrice)
+      val expectedOutput =
+        Order(ClientName("C1"), OrderSide.Buy, AssetName("A"), OrderAmount(10).get, AssetPrice(12).get)
 
       val parsingResult = orderSyntax.parseString(input).toOption
 
-      assertTrue(parsingResult === expectedOutput)
+      assertTrue(parsingResult === Some(expectedOutput))
     },
     test("Sell Order") {
       val input = "C2	s	A	8	10"
 
       val expectedOutput =
-        Order(ClientName("C2"), OrderSide.Sell, AssetName("A"), AssetAmount(8).get, AssetPrice(10).get)
+        Order(ClientName("C2"), OrderSide.Sell, AssetName("A"), OrderAmount(8).get, AssetPrice(10).get)
 
       val parsingResult = orderSyntax.parseString(input).toOption
 

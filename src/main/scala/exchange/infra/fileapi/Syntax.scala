@@ -4,6 +4,7 @@ import exchange.domain.model.AssetAmounts._
 import exchange.domain.model.AssetNames._
 import exchange.domain.model.AssetPrices._
 import exchange.domain.model.ClientNames._
+import exchange.domain.model.OrderAmounts._
 import exchange.domain.model.UsdAmounts._
 import exchange.domain.model._
 import zio.parser.Parser.ParserError
@@ -58,6 +59,11 @@ val assetPriceSyntax: Syntax[String, Char, Char, AssetPrice] = Syntax.digit.repe
   v => Right(v.toString)
 ) ?? "AssetPrice"
 
+val orderAmountSyntax: Syntax[String, Char, Char, OrderAmount] = Syntax.digit.repeat.string.transformEither(
+  _.toIntOption.flatMap(OrderAmount.apply(_)).toRight("Not a valid order amount"),
+  v => Right(v.toString)
+) ?? "OrderAmount"
+
 val orderSideSyntax = Syntax.char('b').as(OrderSide.Buy) | Syntax.char('s').as(OrderSide.Sell)
 
 val orderSyntax: Syntax[String, Char, Char, Order] = {
@@ -68,13 +74,13 @@ val orderSyntax: Syntax[String, Char, Char, Order] = {
       ~ tabChar
       ~ assetNameSyntax
       ~ tabChar
-      ~ assetAmountSyntax
+      ~ orderAmountSyntax
       ~ tabChar
       ~ assetPriceSyntax
 
   tupleSyntax.transformTo(
     Order.apply.tupled,
-    x => (x.clientName, x.side, x.assetName, x.assetAmount, x.assetPrice),
+    x => (x.clientName, x.side, x.assetName, x.amount, x.assetPrice),
     "Not an Order"
   ) ?? "Order"
 }

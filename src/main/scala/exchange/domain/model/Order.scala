@@ -4,6 +4,7 @@ import exchange.domain.model.AssetAmounts._
 import exchange.domain.model.AssetNames._
 import exchange.domain.model.AssetPrices._
 import exchange.domain.model.ClientNames._
+import exchange.domain.model.OrderAmounts._
 import exchange.domain.model.UsdAmounts._
 import zio.prelude.Equal
 
@@ -15,10 +16,10 @@ final case class Order(
     clientName: ClientName,
     side: OrderSide,
     assetName: AssetName,
-    assetAmount: AssetAmount,
+    amount: OrderAmount,
     assetPrice: AssetPrice
 ) {
-  def usdAmount: Option[UsdAmount] = assetAmount.toUsdAmount(assetPrice)
+  def usdAmount: Option[UsdAmount] = amount.toAssetAmount.toUsdAmount(assetPrice)
 }
 
 object Order:

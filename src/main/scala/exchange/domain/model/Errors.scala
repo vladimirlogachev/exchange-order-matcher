@@ -7,7 +7,6 @@ enum OrderRejectionReason:
   case ClientNotFound
   case InsufficientUsdBalance
   case InsufficientAssetBalance
-  case InvalidAssetAmount
   case UnexpectedInternalError // TODO: consider removing or defining more specific errors
 
 object OrderRejectionReason:

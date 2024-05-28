@@ -18,6 +18,8 @@ object AssetNames:
     def unwrap(s: AssetName): String = s
 
 object UsdAmounts:
+  /** Note: Must be greater than or equal to 0
+    */
   opaque type UsdAmount = Int
 
   extension (x: UsdAmount) {
@@ -34,6 +36,8 @@ object UsdAmounts:
       else None
 
 object AssetAmounts:
+  /** Note: Must be greater than or equal to 0
+    */
   opaque type AssetAmount = Int
 
   extension (x: AssetAmount) {
@@ -56,7 +60,31 @@ object AssetAmounts:
 
     def min(x: AssetAmount, y: AssetAmount): AssetAmount = Math.min(x, y)
 
+object OrderAmounts:
+
+  /** Note: Must be greater than 0
+    */
+  opaque type OrderAmount = AssetAmounts.AssetAmount
+
+  extension (x: OrderAmount) {
+    def toAssetAmount: AssetAmounts.AssetAmount = x
+  }
+
+  object OrderAmount:
+    implicit val OrderAmountEqual: Equal[OrderAmount] = Equal.default
+
+    def fromAssetAmount(x: AssetAmounts.AssetAmount): Option[OrderAmount] =
+      AssetAmounts.AssetAmount(1).flatMap(one => if x >= one then Some(x) else None)
+
+    def apply(i: Int): Option[OrderAmount] =
+      if i >= 1 then AssetAmounts.AssetAmount(i)
+      else None
+
+    def min(x: OrderAmount, y: OrderAmount): OrderAmount = AssetAmounts.AssetAmount.min(x, y)
+
 object AssetPrices:
+  /** Note: Must be greater than 0
+    */
   opaque type AssetPrice = Int
 
   extension (x: AssetPrice) {
