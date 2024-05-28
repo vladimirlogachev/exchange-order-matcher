@@ -6,14 +6,36 @@
 
 ## Usage
 
+The program reads the inputs from the `orders.txt` and `clients.txt` files and writes the output to the `results.txt` file.
+
 - `sbt run` - run
 - `sbt test` - test
 - `sbt styleFix` - fix formatting and linting errors
 - `sbt styleCheck` - check for formatting and linting errors.
+- `sbt dev` - allow compiler warnings to not fail the compilation.
 
 ## Design
 
-- `Exchange` – responsible for processing orders
+- `ExchangeState` – responsible for processing orders
 - `FileApi` – a file-based API for the exchange
   (loading client balances to the state and back, interacting with matcher). Also knows about the string syntax.
 - `Cli` – responsible for dealing with the file system and interacting with the user.
+
+## Design Choices
+
+- All types and data structures are immutable.
+- All errors are represented as ADTs, and the program never throws exceptions, but uses error handling capabilities of `Either`, `ZIO`, and`ZStream` instead.
+- `OrderAmount` and `AssetPrice` are forced to be positive (and never zero) using the opaque types.
+  - This means that orders with zero amount or zero price are rejected not because they are invalid from the `ExchangeState` perspective, but from a parsing perspective. This means, that if `orders.txt` contains an order with zero amount or zero price, the program will exit with `ExitCode.failure`. In a real-world scenario, we won't want to accept such orders from customers, and reject them without submitting, which also fits the current design choice.
+  - The alternative could be to allow zero amounts and prices, but this would make the core logic less reliable.
+- Similarly, `AssetAmount` and `UsdAmount` (used for client balances and most computations) are forced to be non-negative.
+- Every customer balance is represented via 2 parts: `free` and `locked`. Functions that manage the `OrderBook` are implemented in such a way that they automatically update locked and free balances every time the order is inserted or removed. This way, in any given `ExchangeState` locked client balances are expected to be consistent with the `OrderBook`.
+  - This choice means that in order to work with the existing order from the book, it is removed from the queue, and then the remaining part could be put back, and the updated state doesn't contain such `temporarily removed` orders.
+- Order price is a so-called "limit price". The order is executed at the best available price, but not worse than the limit price.
+  - A better price can be used if there are orders in the order book with a better price than specified in the order.
+  - After all matching orders are used, and the order is placed in the order book, only its specified limit price will be used for trades.
+
+### Known Invariants
+
+- The sum of all client balances of USD and of every individual asset is the same before and after processing any orders (because there are no exchange fees).
+- The sum of locked assets is equal to the sum of order amounts in the order book.
