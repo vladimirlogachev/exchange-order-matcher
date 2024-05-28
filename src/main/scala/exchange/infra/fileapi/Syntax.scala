@@ -1,5 +1,8 @@
 package exchange.infra.fileapi
 
+/** This module contains the syntax definitions for parsing the input files.
+  */
+
 import zio.parser.Parser.ParserError
 import zio.parser._
 
@@ -12,6 +15,8 @@ import exchange.domain.model.OrderAmounts._
 import exchange.domain.model.OrderSide
 import exchange.domain.model.UsdAmounts._
 
+/** Transforms a parser error into a human-readable string for CLI output.
+  */
 def explainParserError(err: ParserError[String]): String = err match
   case ParserError.Failure(nameStack, position, failure) =>
     s"""|As: ${nameStack.reverse.mkString(".")}

@@ -15,7 +15,9 @@ import exchange.domain.model.Order
 import exchange.domain.model.OrderRejectionReason
 import exchange.domain.model.UsdAmounts._
 
-final case class ClientBalanceRecord(
+/** Describes the input (`clients.txt`) and output (`results.txt`) client balances
+  */
+private final case class ClientBalanceRecord(
     clientName: ClientName,
     usdBalance: UsdAmount,
     balanceA: AssetAmount,
@@ -24,18 +26,18 @@ final case class ClientBalanceRecord(
     balanceD: AssetAmount
 )
 
-object ClientBalanceRecord:
+private object ClientBalanceRecord:
   implicit val ClientBalanceRecordEqual: Equal[ClientBalanceRecord] =
     Equal.default
 
-enum FileApiError:
+private enum FileApiError:
   case ClientAlreadyExists
 
-object FileApiError:
+private object FileApiError:
   implicit val FileApiErrorEqual: Equal[FileApiError] =
     Equal.default
 
-def explainFileApiError(err: FileApiError): String = err match
+private def explainFileApiError(err: FileApiError): String = err match
   case FileApiError.ClientAlreadyExists => "Client already exists"
 
 enum StringFileApiError:
@@ -57,16 +59,50 @@ def explainStringFileApiError(err: StringFileApiError): String = err match
 implicit val StringFileApiErrorEqual: Equal[StringFileApiError] =
   Equal.default
 
-final case class FileApiOutput(
+private final case class FileApiOutput(
     state: ExchangeState,
     rejectedOrders: Vector[(Order, OrderRejectionReason)]
 )
 
-object FileApiOutput:
+private object FileApiOutput:
   implicit val FileApiOutputEqual: Equal[FileApiOutput] =
     Equal.default
 
 object FileApi:
+  /** The most simple and straightforward way to use the API, without the need to deal with the details.
+    */
+  def runFromStringsToStrings(
+      clientBalances: ZStream[Any, Throwable, String],
+      orders: ZStream[Any, Throwable, String]
+  ): IO[StringFileApiError, Set[String]] =
+    runFromStrings(clientBalances, orders)
+      .flatMap(x => ZIO.fromEither(toClientBalanceStrings(x.state)).mapError(StringFileApiError.ItsPrinterError(_)))
+
+  /** Takes strings, outputs the detailed result.
+    */
+  def runFromStrings(
+      clientBalances: ZStream[Any, Throwable, String],
+      orders: ZStream[Any, Throwable, String]
+  ): IO[StringFileApiError, FileApiOutput] =
+    run(
+      clientBalances
+        .mapError(StringFileApiError.ItsOtherStreamError(_))
+        .mapZIO(s =>
+          ZIO
+            .fromEither(clientBalanceRecordSyntax.parseString(s))
+            .mapError(e => StringFileApiError.ItsParserError(s, e))
+        ),
+      orders
+        .mapError(StringFileApiError.ItsOtherStreamError(_))
+        .mapZIO(s =>
+          ZIO
+            .fromEither(orderSyntax.parseString(s))
+            .mapError(e => StringFileApiError.ItsParserError(s, e))
+        )
+    )
+
+  /** Takes the successfully parsed balances and orders, outputs the detailed result.
+    */
   def run(
       clientBalances: ZStream[Any, StringFileApiError, ClientBalanceRecord],
       orders: ZStream[Any, StringFileApiError, Order]
@@ -91,40 +127,8 @@ object FileApi:
       )
   } yield FileApiOutput(finalState, rejectedOrders)
 
-  def runToBalanceRecords(
-      clientBalances: ZStream[Any, StringFileApiError, ClientBalanceRecord],
-      orders: ZStream[Any, StringFileApiError, Order]
-  ): IO[StringFileApiError, Set[ClientBalanceRecord]] =
-    run(clientBalances, orders).map(x => toFinalBalances(x.state))
-
-  def runFromStrings(
-      clientBalances: ZStream[Any, Throwable, String],
-      orders: ZStream[Any, Throwable, String]
-  ): IO[StringFileApiError, FileApiOutput] =
-    run(
-      clientBalances
-        .mapError(StringFileApiError.ItsOtherStreamError(_))
-        .mapZIO(s =>
-          ZIO
-            .fromEither(clientBalanceRecordSyntax.parseString(s))
-            .mapError(e => StringFileApiError.ItsParserError(s, e))
-        ),
-      orders
-        .mapError(StringFileApiError.ItsOtherStreamError(_))
-        .mapZIO(s =>
-          ZIO
-            .fromEither(orderSyntax.parseString(s))
-            .mapError(e => StringFileApiError.ItsParserError(s, e))
-        )
-    )
-
-  def runFromStringsToStrings(
-      clientBalances: ZStream[Any, Throwable, String],
-      orders: ZStream[Any, Throwable, String]
-  ): IO[StringFileApiError, Set[String]] =
-    runFromStrings(clientBalances, orders)
-      .flatMap(x => ZIO.fromEither(toClientBalanceStrings(x.state)).mapError(StringFileApiError.ItsPrinterError(_)))
-
+  /** Loads a single client balance from the record into the state.
+    */
   private def loadClientBalance(
       record: ClientBalanceRecord,
       state: ExchangeState
@@ -170,6 +174,8 @@ object FileApi:
       )
   }.toSet
 
+  /** Converts the final balances to a set of strings.
+    */
   private def toClientBalanceStrings(state: ExchangeState): Either[String, Set[String]] =
     toFinalBalances(state)
       .map(clientBalanceRecordSyntax.printString(_))
@@ -180,6 +186,8 @@ object FileApi:
         } yield acc + x
       )
 
+  /** A helper for the ease of testing and debugging.
+    */
   def toSimplifiedRejectedOrders(
       output: FileApiOutput
   ): Either[StringFileApiError, Vector[(String, OrderRejectionReason)]] =

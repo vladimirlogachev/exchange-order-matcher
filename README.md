@@ -30,6 +30,7 @@ The program reads the inputs from the `orders.txt` and `clients.txt` files and w
 - Similarly, `AssetAmount` and `UsdAmount` (used for client balances and most computations) are forced to be non-negative.
 - Every customer balance is represented via 2 parts: `free` and `locked`. Functions that manage the `OrderBook` are implemented in such a way that they automatically update locked and free balances every time the order is inserted or removed. This way, in any given `ExchangeState` locked client balances are expected to be consistent with the `OrderBook`.
   - This choice means that in order to work with the existing order from the book, it is removed from the queue, and then the remaining part could be put back, and the updated state doesn't contain such `temporarily removed` orders.
+  - The `free` (not the `total`) balance is used to check if the client has sufficient funds for the order. By locking the funds for the orders in the order book, we guarantee that once the order is placed, the client has enough funds to execute it.
 - Order price is a so-called "limit price". The order is executed at the best available price, but not worse than the limit price.
   - A better price can be used if there are orders in the order book with a better price than specified in the order.
   - After all matching orders are used, and the order is placed in the order book, only its specified limit price will be used for trades.
@@ -37,6 +38,8 @@ The program reads the inputs from the `orders.txt` and `clients.txt` files and w
 - There is a `UnexpectedInternalError` variant in the `UnexpectedInternalError` ADT. It corresponds to errors that must never happen as long as the input data is correctly parsed (which it is expected to be).
   - Currently, such error variant doesn't specific error message, because there's nothing to explain to the user. 
   - In real-world scenario, such error could contain technical details for the developers. However, the decision is to leave it outside of the scope of this task.
+- Loading initial balances into the `ExchangeState` is considered a part of the `FileApi`, because it is a simplified file-based way to set the balances.
+  - In a real-world scenario, we would prefer the core to work with the deposit and withdrawal operations instead of allowing the client code to simply set the balance.
 
 ### Known Invariants
 

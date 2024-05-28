@@ -16,6 +16,9 @@ final case class ExchangeState(
     orders: Map[AssetName, OrderBook]
 ) { self =>
 
+  /** Helps to assert the property: "The sum of all client balances of USD and of every individual asset is the same
+    * before and after processing any orders.""
+    */
   def clientBalanceTotal: ClientBalanceTotal = {
     def sumAssetAmounts = (assetName: AssetName) =>
       balances.values
@@ -31,6 +34,10 @@ final case class ExchangeState(
     ClientBalanceTotal(usd, assetA, assetB, assetC, assetD)
   }
 
+  /** Processes the order and returns the updated state.
+    *
+    * Note: This function is called recursively until the order is fully filled or there are no (more) matching orders.
+    */
   def processOrder(order: Order): Either[OrderRejectionReason, ExchangeState] =
     order.side match {
       case OrderSide.Buy =>
@@ -45,6 +52,8 @@ final case class ExchangeState(
         } yield state1
     }
 
+  /** A helper to assert the client balance.
+    */
   private def checkIfClientHasEnoughFreeUsd(
       order: Order
   ): Either[OrderRejectionReason, Unit] = for {
@@ -55,6 +64,8 @@ final case class ExchangeState(
       else Left(OrderRejectionReason.InsufficientUsdBalance)
   } yield ()
 
+  /** A helper to assert the client balance.
+    */
   private def checkIfClientHasEnoughFreeAsset(
       order: Order
   ): Either[OrderRejectionReason, Unit] = for {
@@ -69,7 +80,7 @@ final case class ExchangeState(
 
   /** This function is called recursively until the order is fully filled or there are no (more) matching orders.
     *
-    * Note: this function uses pattern matching insead of for comprehension to allow for a tail call.
+    * Note: This function uses pattern matching insead of for comprehension to allow for a tail call.
     */
   @annotation.tailrec
   private def buyRecursive(buyOrder: Order): Either[OrderRejectionReason, ExchangeState] =
@@ -81,7 +92,7 @@ final case class ExchangeState(
 
   /** This function is called recursively until the order is fully filled or there are no (more) matching orders.
     *
-    * Note: this function uses pattern matching insead of for comprehension to allow for a tail call.
+    * Note: This function uses pattern matching insead of for comprehension to allow for a tail call.
     */
   @annotation.tailrec
   private def sellRecursive(sellOrder: Order): Either[OrderRejectionReason, ExchangeState] =
@@ -91,6 +102,8 @@ final case class ExchangeState(
       case Left(rejection)                         => Left(rejection)
     }
 
+  /** A single iteration of `sellRecursive`
+    */
   private def buyStep(buyOrder: Order): Either[OrderRejectionReason, (Option[Order], ExchangeState)] = for {
     maybeOrder <- self.dequeueMatchingSellOrder(buyOrder.assetName, buyOrder.assetPrice)
     res <- maybeOrder match {
@@ -104,6 +117,8 @@ final case class ExchangeState(
     }
   } yield res
 
+  /** A single iteration of `buyRecursive`
+    */
   private def sellStep(sellOrder: Order): Either[OrderRejectionReason, (Option[Order], ExchangeState)] = for {
     maybeOrder <- self.dequeueMatchingBuyOrder(sellOrder.assetName, sellOrder.assetPrice)
     res <- maybeOrder match {
@@ -117,7 +132,9 @@ final case class ExchangeState(
     }
   } yield res
 
-  /** Note: Errors are considered unexpected here, because all checks should have already passed before this method.
+  /** Executes the trade and alters the client balances using 2 orders, which are already taken from the order book.
+    *
+    * Note: Errors are considered unexpected here, because all checks should have already passed before this method.
     */
   private def buyTrade(
       buyOrder: Order,
@@ -183,7 +200,9 @@ final case class ExchangeState(
     } yield res
   }
 
-  /** Note: Errors are considered unexpected here, because all checks should have already passed before this method.
+  /** Executes the trade and alters the client balances using 2 orders, which are already taken from the order book.
+    *
+    * Note: Errors are considered unexpected here, because all checks should have already passed before this method.
     */
   private def sellTrade(
       sellOrder: Order,
@@ -259,46 +278,6 @@ final case class ExchangeState(
     * Note: this function uses pattern matching insead of for comprehension to allow for a tail call.
     */
   @annotation.tailrec
-  private def dequeueMatchingSellOrder(
-      assetName: AssetName,
-      maxPrice: AssetPrice
-  ): Either[OrderRejectionReason, Option[(Order, ExchangeState)]] =
-    orders.get(assetName) match {
-      case None => Left(OrderRejectionReason.UnexpectedInternalError)
-      case Some(book) =>
-        book.sellOrders.headOption match {
-          case Some((lowestAvailablePrice, queue)) if lowestAvailablePrice <= maxPrice =>
-            // Note: price found and matches our requirement
-            queue.uncons.toOption match {
-              case None =>
-                // Note The order queue for given price turned out to be empty.
-                // Remove the price with an empty queue from the Map and make a recursive call
-                val updatedBook = book.copy(sellOrders = book.sellOrders - lowestAvailablePrice)
-                val state1      = self.copy(orders = orders.updated(assetName, updatedBook))
-                state1.dequeueMatchingSellOrder(assetName, maxPrice)
-              case Some((order, remainingOrders)) =>
-                // There is at least one matching order.
-                val updatedBook = book.copy(sellOrders = book.sellOrders.updated(lowestAvailablePrice, remainingOrders))
-                val state1      = self.copy(orders = orders.updated(assetName, updatedBook))
-                for {
-                  state2 <- state1.unlockClientAsset(order.clientName, assetName, order.amount.toAssetAmount)
-                } yield Some(order, state2)
-            }
-          case _ =>
-            // Note: The lowest available price doesn't match our requirement, or the are no more orders.
-            // No need to continue searching.
-            Right(None)
-        }
-    }
-
-  /** This function will be called (outside) until the order is fully filled or the queue is empty
-    *
-    *   - Nothing = there are no orders with given price or better
-    *   - Some((order, remainingOrderBook)) = there is an order for given price or better, and the updated orderBook
-    *
-    * Note: this function uses pattern matching insead of for comprehension to allow for a tail call.
-    */
-  @annotation.tailrec
   private def dequeueMatchingBuyOrder(
       assetName: AssetName,
       minPrice: AssetPrice
@@ -323,6 +302,46 @@ final case class ExchangeState(
                 for {
                   usdAmount <- order.usdAmount.toRight(OrderRejectionReason.UnexpectedInternalError)
                   state2    <- state1.unlockClientUsd(order.clientName, usdAmount)
+                } yield Some(order, state2)
+            }
+          case _ =>
+            // Note: The lowest available price doesn't match our requirement, or the are no more orders.
+            // No need to continue searching.
+            Right(None)
+        }
+    }
+
+  /** This function will be called (outside) until the order is fully filled or the queue is empty
+    *
+    *   - Nothing = there are no orders with given price or better
+    *   - Some((order, remainingOrderBook)) = there is an order for given price or better, and the updated orderBook
+    *
+    * Note: this function uses pattern matching insead of for comprehension to allow for a tail call.
+    */
+  @annotation.tailrec
+  private def dequeueMatchingSellOrder(
+      assetName: AssetName,
+      maxPrice: AssetPrice
+  ): Either[OrderRejectionReason, Option[(Order, ExchangeState)]] =
+    orders.get(assetName) match {
+      case None => Left(OrderRejectionReason.UnexpectedInternalError)
+      case Some(book) =>
+        book.sellOrders.headOption match {
+          case Some((lowestAvailablePrice, queue)) if lowestAvailablePrice <= maxPrice =>
+            // Note: price found and matches our requirement
+            queue.uncons.toOption match {
+              case None =>
+                // Note The order queue for given price turned out to be empty.
+                // Remove the price with an empty queue from the Map and make a recursive call
+                val updatedBook = book.copy(sellOrders = book.sellOrders - lowestAvailablePrice)
+                val state1      = self.copy(orders = orders.updated(assetName, updatedBook))
+                state1.dequeueMatchingSellOrder(assetName, maxPrice)
+              case Some((order, remainingOrders)) =>
+                // There is at least one matching order.
+                val updatedBook = book.copy(sellOrders = book.sellOrders.updated(lowestAvailablePrice, remainingOrders))
+                val state1      = self.copy(orders = orders.updated(assetName, updatedBook))
+                for {
+                  state2 <- state1.unlockClientAsset(order.clientName, assetName, order.amount.toAssetAmount)
                 } yield Some(order, state2)
             }
           case _ =>
@@ -431,6 +450,9 @@ final case class ExchangeState(
 }
 
 object ExchangeState {
+
+  /** The initial state of the exchange (before setting the initial client balances).
+    */
   def empty: ExchangeState = ExchangeState(
     balances = Map.empty,
     orders = Map(
@@ -443,6 +465,8 @@ object ExchangeState {
 
 }
 
+/** Helper type for `clientBalanceTotal` function.
+  */
 final case class ClientBalanceTotal(
     usd: UsdAmount,
     assetA: AssetAmount,
