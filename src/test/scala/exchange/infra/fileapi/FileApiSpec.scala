@@ -41,7 +41,6 @@ object FileApiSpec extends ZIOSpecDefault {
       // Note: Orders 1 and 2 are partially matched:
       // Order 2 is completely filled,
       // Order 1 is partially filled and its state changed to `C1	b	A	2	12`.
-      // TODO: Check the remaining order in the orderBook, convert orderBook to Vector[String]
       val expectedFinalBalances = Set("C1	904	18	10	10	10", "C2	1096	2	10	10	10")
       for {
         outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either
@@ -55,7 +54,6 @@ object FileApiSpec extends ZIOSpecDefault {
 
       // Note: Orders 3 and 1 will be matched first, Order 1 will be fully settled
       // Then the remainder of Order 3 will be matched with order 2.
-      // TODO: Check the remaining order in the orderBook, convert orderBook to Vector[String]
       val expectedFinalBalances = Set("C1	900	30	20	20	20", "C2	950	25	20	20	20", "C3	1150	5	20	20	20")
       for {
         outputEither <- FileApi.runFromStringsToStrings(clientBalances, orders).either

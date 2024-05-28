@@ -7,7 +7,7 @@ enum OrderRejectionReason:
   case ClientNotFound
   case InsufficientUsdBalance
   case InsufficientAssetBalance
-  case UnexpectedInternalError // TODO: consider removing or defining more specific errors
+  case UnexpectedInternalError
 
 object OrderRejectionReason:
   implicit val OrderRejectionReasonEqual: Equal[OrderRejectionReason] =
