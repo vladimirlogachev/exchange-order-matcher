@@ -99,6 +99,17 @@ object FileApiSpec extends ZIOSpecDefault {
         assertTrue(rejectedOrders === Right(expectedRejectedOrders))
       }
     },
+    test("Order of an unknown client is rejected") {
+      val clientBalances         = ZStream("C1	100	10	10	10	10")
+      val orders                 = ZStream("C2	s	B	1	5")
+      val expectedRejectedOrders = Vector(("C2	s	B	1	5", OrderRejectionReason.ClientNotFound))
+      for {
+        outputEither <- FileApi.runFromStrings(clientBalances, orders).either
+      } yield {
+        val rejectedOrders = outputEither.flatMap(x => FileApi.toSimplifiedRejectedOrders(x))
+        assertTrue(rejectedOrders === Right(expectedRejectedOrders))
+      }
+    },
     /* ------------------- Orders not being filled ------------------- */
 
     test("Empty inputs produce empty outputs") {
