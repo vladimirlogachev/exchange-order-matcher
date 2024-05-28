@@ -2,7 +2,7 @@ package exchange.infra.fileapi
 
 import zio._
 import zio.parser.Parser.ParserError
-import zio.prelude._
+import zio.prelude.Equal
 import zio.stream._
 
 import exchange.domain.model.AssetAmounts._
@@ -193,7 +193,7 @@ object FileApi:
   ): Either[StringFileApiError, Vector[(String, OrderRejectionReason)]] =
     output.rejectedOrders
       .map { case (x, reason) =>
-        (orderSyntax.printString(x).leftMap(StringFileApiError.ItsPrinterError(_)), reason)
+        (orderSyntax.printString(x).left.map(StringFileApiError.ItsPrinterError(_)), reason)
       }
       .foldLeft(Right(Vector.empty): Either[StringFileApiError, Vector[(String, OrderRejectionReason)]])((accE, elem) =>
         val (xE, reason) = elem
