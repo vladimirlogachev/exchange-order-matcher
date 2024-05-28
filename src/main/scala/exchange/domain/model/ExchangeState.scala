@@ -9,32 +9,6 @@ import scalaz.Dequeue
 import zio.prelude.Equal
 import zio.prelude.EqualOps
 
-enum OrderRejectionReason:
-  case ClientNotFound
-  case InsufficientUsdBalance
-  case InsufficientAssetBalance
-  case InvalidAssetAmount
-  case UnexpectedInternalError // TODO: consider removing or defining more specific errors
-
-object OrderRejectionReason:
-  implicit val OrderRejectionReasonEqual: Equal[OrderRejectionReason] =
-    Equal.default
-
-final case class CompoundBalance[A](
-    free: A,
-    locked: A
-)
-
-object CompoundBalance:
-  def totalUsdBalance(x: CompoundBalance[UsdAmount]) = x.free + x.locked
-
-  def totalAssetBalance(x: CompoundBalance[AssetAmount]) = x.free + x.locked
-
-final case class ClientBalance(
-    usdBalance: CompoundBalance[UsdAmount],
-    assetBalances: Map[AssetName, CompoundBalance[AssetAmount]]
-)
-
 final case class ExchangeState(
     balances: Map[ClientName, ClientBalance],
     orders: Map[AssetName, OrderBook]
@@ -56,6 +30,11 @@ final case class ExchangeState(
   }
 
   def processOrder(order: Order): Either[OrderRejectionReason, ExchangeState] =
+    def checkIfOrderHasNonZeroAmount(order: Order): Either[OrderRejectionReason, Unit] =
+      if order.assetAmount === AssetAmount.zero
+      then Left(OrderRejectionReason.InvalidAssetAmount)
+      else Right(())
+
     order.side match {
       case OrderSide.Buy =>
         for {
@@ -479,8 +458,3 @@ final case class ClientBalanceTotal(
 object ClientBalanceTotal:
   implicit val ClientBalanceTotalEqual: Equal[ClientBalanceTotal] =
     Equal.default
-
-private def checkIfOrderHasNonZeroAmount(order: Order): Either[OrderRejectionReason, Unit] =
-  if order.assetAmount === AssetAmount.zero
-  then Left(OrderRejectionReason.InvalidAssetAmount)
-  else Right(())
