@@ -42,15 +42,27 @@ final case class ExchangeState(
     order.side match {
       case OrderSide.Buy =>
         for {
+          _      <- checkIfAssetExists(order)
           _      <- checkIfClientHasEnoughFreeUsd(order)
           state1 <- self.buyRecursive(order)
         } yield state1
       case OrderSide.Sell =>
         for {
+          _      <- checkIfAssetExists(order)
           _      <- checkIfClientHasEnoughFreeAsset(order)
           state1 <- self.sellRecursive(order)
         } yield state1
     }
+
+  /** A helper to validate the order.
+    *
+    * Note: in the real-world scenario with lots of assets, this function would be more complex.
+    */
+  private def checkIfAssetExists(
+      order: Order
+  ): Either[OrderRejectionReason, Unit] =
+    if Set(AssetName("A"), AssetName("B"), AssetName("C"), AssetName("D")).contains(order.assetName) then Right(())
+    else Left(OrderRejectionReason.UnknownAsset)
 
   /** A helper to assert the client balance.
     */

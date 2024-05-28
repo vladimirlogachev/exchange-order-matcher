@@ -6,6 +6,7 @@ import exchange.domain.model.AssetAmounts._
 
 enum OrderRejectionReason:
   case ClientNotFound
+  case UnknownAsset
   case InsufficientUsdBalance
   case InsufficientAssetBalance
   case UnexpectedInternalError
