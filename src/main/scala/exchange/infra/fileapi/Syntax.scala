@@ -71,7 +71,8 @@ val orderAmountSyntax: Syntax[String, Char, Char, OrderAmount] = Syntax.digit.re
   v => Right(v.toString)
 ) ?? "OrderAmount"
 
-val orderSideSyntax = (Syntax.char('b').as(OrderSide.Buy) | Syntax.char('s').as(OrderSide.Sell)) ?? "OrderSide"
+val orderSideSyntax =
+  (Syntax.char('b').as(OrderSide.Buy) ?? "Buy" | Syntax.char('s').as(OrderSide.Sell) ?? "Sell") ?? "OrderSide"
 
 val orderSyntax: Syntax[String, Char, Char, Order] = {
   val tupleSyntax =
@@ -84,6 +85,7 @@ val orderSyntax: Syntax[String, Char, Char, Order] = {
       ~ orderAmountSyntax
       ~ tabChar
       ~ assetPriceSyntax
+      ~ Syntax.end
 
   tupleSyntax.transformTo(
     Order.apply.tupled,
@@ -105,6 +107,7 @@ val clientBalanceRecordSyntax = {
       ~ assetAmountSyntax
       ~ tabChar
       ~ assetAmountSyntax
+      ~ Syntax.end
 
   tupleSyntax.transform(
     ClientBalanceRecord.apply.tupled,

@@ -48,7 +48,7 @@ enum StringFileApiError:
 
 def explainStringFileApiError(err: StringFileApiError): String = err match
   case StringFileApiError.ItsOtherStreamError(e) => s"Stream error: ${e.getMessage}"
-  case StringFileApiError.ItsParserError(s, e) => s"""|Failed to parse: $s
+  case StringFileApiError.ItsParserError(s, e) => s"""|Failed to parse string: $s
                                                       |${explainParserError(e)}""".stripMargin
 
   case StringFileApiError.ItsPrinterError(e) => s"""|Failed to print:
