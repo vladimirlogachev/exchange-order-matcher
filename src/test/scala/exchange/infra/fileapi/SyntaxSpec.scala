@@ -71,12 +71,12 @@ object SyntaxSpec extends ZIOSpecDefault {
       val expectedError =
         s"""|Reason: All branches failed
             |Left:
-            |Failed to parse: Order.OrderSide
+            |Failed to parse: Order.OrderSide.Buy
             |Position: 3
             |Reason: not 'b'
             |
             |Right:
-            |Failed to parse: Order.OrderSide
+            |Failed to parse: Order.OrderSide.Sell
             |Position: 3
             |Reason: not 's'""".stripMargin
       val parsingResult = orderSyntax.parseString(input).left.map(explainParserError)
