@@ -8,13 +8,13 @@ lazy val root = project
     scalaVersion := scala3Version,
     run / fork   := true, // Makes exit codes work as expected
     libraryDependencies ++= Seq(
-      "dev.zio"    %% "zio"          % "2.1.4",
-      "dev.zio"    %% "zio-streams"  % "2.1.4",
+      "dev.zio"    %% "zio"          % "2.1.5",
+      "dev.zio"    %% "zio-streams"  % "2.1.5",
       "dev.zio"    %% "zio-prelude"  % "1.0.0-RC27",
       "dev.zio"    %% "zio-parser"   % "0.1.9",
       "org.scalaz" %% "scalaz-core"  % "7.3.8", // For Dequeue
-      "dev.zio"    %% "zio-test"     % "2.1.4" % Test,
-      "dev.zio"    %% "zio-test-sbt" % "2.1.4" % Test
+      "dev.zio"    %% "zio-test"     % "2.1.5" % Test,
+      "dev.zio"    %% "zio-test-sbt" % "2.1.5" % Test
     ),
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
     // Scalafix
