@@ -1,5 +1,8 @@
 # exchange-order-matcher
 
+Coding assessment (Scala 3, ZIO).
+Completed in 2024, and currently maintained as a demonstration project.
+
 ## Pre-requisites
 
 - [sbt](https://www.scala-sbt.org/)
@@ -11,8 +14,9 @@ The program reads the inputs from the `orders.txt` and `clients.txt` files and w
 - `sbt run` - run
 - `sbt test` - test
 - `sbt styleFix` - fix formatting and linting errors
-- `sbt styleCheck` - check for formatting and linting errors.
-- `sbt dev` - allow compiler warnings to not fail the compilation.
+- `sbt styleCheck` - check for formatting and linting errors
+- `sbt dev` - allow compiler warnings to not fail the compilation
+- `sbt dependencyUpdates` - list dependency updates
 
 ## Design
 
