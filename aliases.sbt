@@ -1,6 +1,6 @@
 addCommandAlias(
   "styleCheck",
-  "scalafmtSbtCheck; scalafmtCheckAll; scalafixAll --check"
+  "scalafixAll --check; scalafmtSbtCheck; scalafmtCheckAll"
 )
 
 addCommandAlias(
