@@ -40,7 +40,7 @@ The program reads the inputs from the `orders.txt` and `clients.txt` files and w
 - Order price is a so-called "limit price". The order is executed at the best available price, but not worse than the limit price.
   - A better price can be used if there are orders in the order book with a better price than specified in the order.
   - After all matching orders are used, and the order is placed in the order book, only its specified limit price will be used for trades.
-- All errors are represented as ADTs, and the program never throws exceptions, but uses error handling capabilities of `Either`, `ZIO`, and`ZStream` instead.
+- All errors are represented as ADTs, and the program never throws exceptions, but uses error handling capabilities of `Either`, `ZIO`, and `ZStream` instead.
 - There is a `UnexpectedInternalError` variant in the `UnexpectedInternalError` ADT. It corresponds to errors that must never happen as long as the input data is correctly parsed (which it is expected to be).
   - Currently, such error variant doesn't specific error message, because there's nothing to explain to the user. 
   - In real-world scenario, such error could contain technical details for the developers. However, the decision is to leave it outside of the scope of this task.
