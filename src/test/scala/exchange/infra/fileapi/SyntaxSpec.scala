@@ -51,35 +51,41 @@ object SyntaxSpec extends ZIOSpecDefault {
     test("An order with zero price is rejected") {
       val input = "C2	s	A	8	0"
       val expectedError =
-        """|Failed to parse: Order.AssetPrice
+        """|Parsing Error:
+           |Input: C2	s	A	8	0
+           |Name: Order.AssetPrice
            |Position: 10
            |Reason: Not a valid asset price""".stripMargin
-      val parsingResult = orderSyntax.parseString(input).left.map(explainParserError)
+      val parsingResult = orderSyntax.parseString(input).left.map(explainStringParserError)
       assertTrue(parsingResult === Left(expectedError))
     },
     test("An order with zero price is rejected") {
       val input = "C2	s	A	0	8"
       val expectedError =
-        s"""|Failed to parse: Order.OrderAmount
+        s"""|Parsing Error:
+            |Input: C2	s	A	0	8
+            |Name: Order.OrderAmount
             |Position: 8
             |Reason: Not a valid order amount""".stripMargin
-      val parsingResult = orderSyntax.parseString(input).left.map(explainParserError)
+      val parsingResult = orderSyntax.parseString(input).left.map(explainStringParserError)
       assertTrue(parsingResult === Left(expectedError))
     },
     test("An order with an invalid type is rejected") {
       val input = "C2	why	A	8	8"
       val expectedError =
-        s"""|Reason: All branches failed
+        s"""|Parsing Error:
+            |Input: C2	why	A	8	8
+            |Reason: All branches failed
             |Left:
-            |Failed to parse: Order.OrderSide.Buy
+            |Name: Order.OrderSide.Buy
             |Position: 3
             |Reason: not 'b'
             |
             |Right:
-            |Failed to parse: Order.OrderSide.Sell
+            |Name: Order.OrderSide.Sell
             |Position: 3
             |Reason: not 's'""".stripMargin
-      val parsingResult = orderSyntax.parseString(input).left.map(explainParserError)
+      val parsingResult = orderSyntax.parseString(input).left.map(explainStringParserError)
       assertTrue(parsingResult === Left(expectedError))
     }
   )

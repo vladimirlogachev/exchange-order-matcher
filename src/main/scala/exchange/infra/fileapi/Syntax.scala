@@ -3,6 +3,8 @@ package exchange.infra.fileapi
 /** This module contains the syntax definitions for parsing the input files.
   */
 
+import scala.util.control.TailCalls._
+
 import zio.parser.Parser.ParserError
 import zio.parser._
 
@@ -17,31 +19,43 @@ import exchange.domain.model.UsdAmounts._
 
 /** Transforms a parser error into a human-readable string for CLI output.
   */
-def explainParserError(err: ParserError[String]): String = err match
+def explainStringParserError(spe: StringParserError[String]): String =
+  s"""|Parsing Error:
+      |Input: ${spe.input}
+      |${explainParserError(spe.error).result}""".stripMargin
+
+/** Transforms a parser error into a human-readable string for CLI output.
+  */
+private def explainParserError(err: ParserError[String]): TailRec[String] = err match
   case ParserError.Failure(nameStack, position, failure) =>
-    s"""|Failed to parse: ${nameStack.reverse.mkString(".")}
-        |Position: $position
-        |Reason: $failure""".stripMargin
+    done(s"""|Name: ${nameStack.reverse.mkString(".")}
+             |Position: $position
+             |Reason: $failure""".stripMargin)
 
   case ParserError.UnknownFailure(nameStack, position) =>
-    s"""|Failed to parse: ${nameStack.reverse.mkString(".")}
-        |Position: $position
-        |Reason: Unknown failure""".stripMargin
+    done(s"""|Name: ${nameStack.reverse.mkString(".")}
+             |Position: $position
+             |Reason: Unknown failure""".stripMargin)
 
-  case ParserError.UnexpectedEndOfInput =>
-    "Reason: Unexpected end of input"
+  case ParserError.UnexpectedEndOfInput(nameStack) =>
+    done(s"""|Name: ${nameStack.reverse.mkString(".")}
+             |Reason: Unexpected end of input""".stripMargin)
 
-  case ParserError.NotConsumedAll(lastFailure) =>
-    s"""|Reason: Not consumed all
-        |Last Failure: ${lastFailure.map(explainParserError)}""".stripMargin
+  case ParserError.NotConsumedAll(nameStack, position) =>
+    done(s"""|Name: ${nameStack.reverse.mkString(".")}
+             |Position: $position
+             |Reason: Not consumed all""".stripMargin)
 
   case ParserError.AllBranchesFailed(left, right) =>
-    s"""|Reason: All branches failed
-        |Left:
-        |${explainParserError(left)}
-        |
-        |Right:
-        |${explainParserError(right)}""".stripMargin
+    for {
+      leftResult  <- tailcall(explainParserError(left))
+      rightResult <- tailcall(explainParserError(right))
+    } yield s"""|Reason: All branches failed
+                |Left:
+                |${leftResult}
+                |
+                |Right:
+                |${rightResult}""".stripMargin
 
 val tabChar = Syntax.char('\t')
 

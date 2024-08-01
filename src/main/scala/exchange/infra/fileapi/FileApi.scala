@@ -1,7 +1,7 @@
 package exchange.infra.fileapi
 
 import zio._
-import zio.parser.Parser.ParserError
+import zio.parser.StringParserError
 import zio.prelude.Equal
 import zio.stream._
 
@@ -42,18 +42,15 @@ private def explainFileApiError(err: FileApiError): String = err match
 
 enum StringFileApiError:
   case ItsOtherStreamError(e: Throwable)
-  case ItsParserError(s: String, e: ParserError[String])
+  case ItsParserError(e: StringParserError[String])
   case ItsPrinterError(e: String)
   case ItsFileApiError(e: FileApiError)
 
 def explainStringFileApiError(err: StringFileApiError): String = err match
   case StringFileApiError.ItsOtherStreamError(e) => s"Stream error: ${e.getMessage}"
-  case StringFileApiError.ItsParserError(s, e) => s"""|Failed to parse string: $s
-                                                      |${explainParserError(e)}""".stripMargin
-
+  case StringFileApiError.ItsParserError(e)      => explainStringParserError(e)
   case StringFileApiError.ItsPrinterError(e) => s"""|Failed to print:
                                                     |$e""".stripMargin
-
   case StringFileApiError.ItsFileApiError(e) => explainFileApiError(e)
 
 implicit val StringFileApiErrorEqual: Equal[StringFileApiError] =
@@ -90,14 +87,14 @@ object FileApi:
         .mapZIO(s =>
           ZIO
             .fromEither(clientBalanceRecordSyntax.parseString(s))
-            .mapError(e => StringFileApiError.ItsParserError(s, e))
+            .mapError(StringFileApiError.ItsParserError(_))
         ),
       orders
         .mapError(StringFileApiError.ItsOtherStreamError(_))
         .mapZIO(s =>
           ZIO
             .fromEither(orderSyntax.parseString(s))
-            .mapError(e => StringFileApiError.ItsParserError(s, e))
+            .mapError(StringFileApiError.ItsParserError(_))
         )
     )
 
