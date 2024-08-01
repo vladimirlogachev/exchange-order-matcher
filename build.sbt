@@ -7,16 +7,20 @@ lazy val root = project
     version      := "0.1.0-SNAPSHOT",
     scalaVersion := scala3Version,
     run / fork   := true, // Makes exit codes work as expected
+    // fp
     libraryDependencies ++= Seq(
-      "dev.zio"    %% "zio"          % "2.1.6",
-      "dev.zio"    %% "zio-streams"  % "2.1.6",
-      "dev.zio"    %% "zio-prelude"  % "1.0.0-RC27",
-      "dev.zio"    %% "zio-parser"   % "0.1.10",
-      "org.scalaz" %% "scalaz-core"  % "7.3.8", // For Dequeue
-      "dev.zio"    %% "zio-test"     % "2.1.6" % Test,
-      "dev.zio"    %% "zio-test-sbt" % "2.1.6" % Test
+      "dev.zio"    %% "zio"         % Versions.zio,
+      "dev.zio"    %% "zio-streams" % Versions.zio,
+      "dev.zio"    %% "zio-prelude" % Versions.zioPrelude,
+      "dev.zio"    %% "zio-parser"  % Versions.zioParser,
+      "org.scalaz" %% "scalaz-core" % Versions.scalaz // For Dequeue
     ),
-    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
+    // tests
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio-test"     % Versions.zio,
+      "dev.zio" %% "zio-test-sbt" % Versions.zio
+    ).map(_ % Test),
+
     // Scalafix
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision
