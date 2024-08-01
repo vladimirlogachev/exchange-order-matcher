@@ -11,7 +11,7 @@ lazy val root = project
       "dev.zio"    %% "zio"          % "2.1.6",
       "dev.zio"    %% "zio-streams"  % "2.1.6",
       "dev.zio"    %% "zio-prelude"  % "1.0.0-RC27",
-      "dev.zio"    %% "zio-parser"   % "0.1.9",
+      "dev.zio"    %% "zio-parser"   % "0.1.10",
       "org.scalaz" %% "scalaz-core"  % "7.3.8", // For Dequeue
       "dev.zio"    %% "zio-test"     % "2.1.6" % Test,
       "dev.zio"    %% "zio-test-sbt" % "2.1.6" % Test
