@@ -19,7 +19,7 @@ object SyntaxSpec extends ZIOSpecDefault {
   def spec: Spec[Any, Nothing] = suite("Syntax")(
     /* ------------------- Simple successful cases ------------------- */
     test("ClientBalanceRecord") {
-      val input = "C1	1000	10	5	15	0"
+      val input          = "C1	1000	10	5	15	0"
       val expectedOutput = ClientBalanceRecord(
         ClientName("C1"),
         UsdAmount(1000).get,
@@ -34,14 +34,14 @@ object SyntaxSpec extends ZIOSpecDefault {
       && assertTrue(parsedAndPrintedBack === Some(input))
     },
     test("Buy Order") {
-      val input = "C1	b	A	10	12"
+      val input          = "C1	b	A	10	12"
       val expectedOutput =
         Order(ClientName("C1"), OrderSide.Buy, AssetName("A"), OrderAmount(10).get, AssetPrice(12).get)
       val parsingResult = orderSyntax.parseString(input).toOption
       assertTrue(parsingResult === Some(expectedOutput))
     },
     test("Sell Order") {
-      val input = "C2	s	A	8	10"
+      val input          = "C2	s	A	8	10"
       val expectedOutput =
         Order(ClientName("C2"), OrderSide.Sell, AssetName("A"), OrderAmount(8).get, AssetPrice(10).get)
       val parsingResult = orderSyntax.parseString(input).toOption
@@ -49,7 +49,7 @@ object SyntaxSpec extends ZIOSpecDefault {
     },
     /* ------------------- Orders being rejected ------------------- */
     test("An order with zero price is rejected") {
-      val input = "C2	s	A	8	0"
+      val input         = "C2	s	A	8	0"
       val expectedError =
         """|Parsing Error:
            |Input: C2	s	A	8	0
@@ -60,7 +60,7 @@ object SyntaxSpec extends ZIOSpecDefault {
       assertTrue(parsingResult === Left(expectedError))
     },
     test("An order with zero price is rejected") {
-      val input = "C2	s	A	0	8"
+      val input         = "C2	s	A	0	8"
       val expectedError =
         s"""|Parsing Error:
             |Input: C2	s	A	0	8
@@ -71,7 +71,7 @@ object SyntaxSpec extends ZIOSpecDefault {
       assertTrue(parsingResult === Left(expectedError))
     },
     test("An order with an invalid type is rejected") {
-      val input = "C2	why	A	8	8"
+      val input         = "C2	why	A	8	8"
       val expectedError =
         s"""|Parsing Error:
             |Input: C2	why	A	8	8

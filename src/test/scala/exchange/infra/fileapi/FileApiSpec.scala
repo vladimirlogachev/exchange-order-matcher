@@ -78,7 +78,7 @@ object FileApiSpec extends ZIOSpecDefault {
         "C1	10000000000000000	10000000000000000	0	0	0",
         "C2	10000000000000000	10000000000000000	0	0	0"
       )
-      val orders = ZStream("C1	b	A	2	5", "C2	s	A	1	5", "C2	s	A	1	5")
+      val orders                = ZStream("C1	b	A	2	5", "C2	s	A	1	5", "C2	s	A	1	5")
       val expectedFinalBalances = Set(
         "C1	9999999999999990	10000000000000002	0	0	0",
         "C2	10000000000000010	9999999999999998	0	0	0"

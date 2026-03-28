@@ -71,7 +71,7 @@ final case class ExchangeState(
   ): Either[OrderRejectionReason, Unit] = for {
     usdAmount     <- order.usdAmount.toRight(OrderRejectionReason.UnexpectedInternalError)
     clientBalance <- balances.get(order.clientName).toRight(OrderRejectionReason.ClientNotFound)
-    _ <-
+    _             <-
       if (clientBalance.usdBalance.free >= usdAmount) then Right(())
       else Left(OrderRejectionReason.InsufficientUsdBalance)
   } yield ()
@@ -82,7 +82,7 @@ final case class ExchangeState(
       order: Order
   ): Either[OrderRejectionReason, Unit] = for {
     clientBalance <- balances.get(order.clientName).toRight(OrderRejectionReason.ClientNotFound)
-    assetBalance <- clientBalance.assetBalances
+    assetBalance  <- clientBalance.assetBalances
       .get(order.assetName)
       .toRight(OrderRejectionReason.UnexpectedInternalError)
     _ <-
@@ -118,7 +118,7 @@ final case class ExchangeState(
     */
   private def buyStep(buyOrder: Order): Either[OrderRejectionReason, (Option[Order], ExchangeState)] = for {
     maybeOrder <- self.dequeueMatchingSellOrder(buyOrder.assetName, buyOrder.assetPrice)
-    res <- maybeOrder match {
+    res        <- maybeOrder match {
       case None =>
         // Note: No (more) matching orders found. Put the (remaining) order in the book.
         self.insertBuyOrder(buyOrder).map((None, _))
@@ -133,7 +133,7 @@ final case class ExchangeState(
     */
   private def sellStep(sellOrder: Order): Either[OrderRejectionReason, (Option[Order], ExchangeState)] = for {
     maybeOrder <- self.dequeueMatchingBuyOrder(sellOrder.assetName, sellOrder.assetPrice)
-    res <- maybeOrder match {
+    res        <- maybeOrder match {
       case None =>
         // Note: No (more) matching orders found. Put the (remaining) order in the book.
         self.insertSellOrder(sellOrder).map((None, _))
@@ -164,7 +164,7 @@ final case class ExchangeState(
       buyerAssetBalance <- buyer.assetBalances.get(assetName).toRight(OrderRejectionReason.UnexpectedInternalError)
       newBuyerUsdFree <- (buyer.usdBalance.free - tradeUsdAmount).toRight(OrderRejectionReason.UnexpectedInternalError)
       newBuyerAssetFree = buyerAssetBalance.free + tradeAssetAmount
-      newBuyerBalance = buyer.copy(
+      newBuyerBalance   = buyer.copy(
         usdBalance = buyer.usdBalance.copy(free = newBuyerUsdFree),
         assetBalances = buyer.assetBalances.updated(assetName, buyerAssetBalance.copy(free = newBuyerAssetFree))
       )
@@ -230,10 +230,10 @@ final case class ExchangeState(
       // buyer
       buyer             <- self.balances.get(matchingBuyOrder.clientName).toRight(OrderRejectionReason.ClientNotFound)
       buyerAssetBalance <- buyer.assetBalances.get(assetName).toRight(OrderRejectionReason.UnexpectedInternalError)
-      newBuyerUsdFree <- (buyer.usdBalance.free - tradeUsdAmount)
+      newBuyerUsdFree   <- (buyer.usdBalance.free - tradeUsdAmount)
         .toRight(OrderRejectionReason.UnexpectedInternalError)
       newBuyerAssetFree = buyerAssetBalance.free + tradeAssetAmount
-      newBuyerBalance = buyer.copy(
+      newBuyerBalance   = buyer.copy(
         usdBalance = buyer.usdBalance.copy(free = newBuyerUsdFree),
         assetBalances = buyer.assetBalances.updated(assetName, buyerAssetBalance.copy(free = newBuyerAssetFree))
       )
@@ -295,7 +295,7 @@ final case class ExchangeState(
       minPrice: AssetPrice
   ): Either[OrderRejectionReason, Option[(Order, ExchangeState)]] =
     orders.get(assetName) match {
-      case None => Left(OrderRejectionReason.UnexpectedInternalError)
+      case None       => Left(OrderRejectionReason.UnexpectedInternalError)
       case Some(book) =>
         book.buyOrders.lastOption match {
           case Some((lowestAvailablePrice, queue)) if lowestAvailablePrice >= minPrice =>
@@ -336,7 +336,7 @@ final case class ExchangeState(
       maxPrice: AssetPrice
   ): Either[OrderRejectionReason, Option[(Order, ExchangeState)]] =
     orders.get(assetName) match {
-      case None => Left(OrderRejectionReason.UnexpectedInternalError)
+      case None       => Left(OrderRejectionReason.UnexpectedInternalError)
       case Some(book) =>
         book.sellOrders.headOption match {
           case Some((lowestAvailablePrice, queue)) if lowestAvailablePrice <= maxPrice =>
@@ -439,7 +439,7 @@ final case class ExchangeState(
     clientBalance <- balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
     assetBalance  <- clientBalance.assetBalances.get(assetName).toRight(OrderRejectionReason.UnexpectedInternalError)
     newAssetFree  <- (assetBalance.free - assetAmount).toRight(OrderRejectionReason.InsufficientAssetBalance)
-    newAssetBalance = CompoundBalance(free = newAssetFree, locked = assetBalance.locked + assetAmount)
+    newAssetBalance  = CompoundBalance(free = newAssetFree, locked = assetBalance.locked + assetAmount)
     newClientBalance = clientBalance.copy(assetBalances =
       clientBalance.assetBalances.updated(assetName, newAssetBalance)
     )
@@ -453,7 +453,7 @@ final case class ExchangeState(
     clientBalance  <- balances.get(clientName).toRight(OrderRejectionReason.ClientNotFound)
     assetBalance   <- clientBalance.assetBalances.get(assetName).toRight(OrderRejectionReason.UnexpectedInternalError)
     newAssetLocked <- (assetBalance.locked - assetAmount).toRight(OrderRejectionReason.UnexpectedInternalError)
-    newAssetBalance = CompoundBalance(free = assetBalance.free + assetAmount, locked = newAssetLocked)
+    newAssetBalance  = CompoundBalance(free = assetBalance.free + assetAmount, locked = newAssetLocked)
     newClientBalance = clientBalance.copy(assetBalances =
       clientBalance.assetBalances.updated(assetName, newAssetBalance)
     )

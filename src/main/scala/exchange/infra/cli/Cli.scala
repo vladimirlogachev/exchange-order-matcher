@@ -36,7 +36,7 @@ object Cli extends ZIOAppDefault:
     _              <- linesToFile("results.txt", balanceStrings).mapError(StringFileApiError.ItsOtherStreamError(_))
   } yield ()
 
-  def run: UIO[Unit] = processFiles
+  def run: ZIO[Any, Any, Unit] = processFiles
     .tapBoth(
       e =>
         Console.printLine(
@@ -45,5 +45,3 @@ object Cli extends ZIOAppDefault:
         ),
       _ => Console.printLine("Done!")
     )
-    .exitCode
-    .flatMap(exit)

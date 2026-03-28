@@ -18,18 +18,20 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Cancel previous runs
-        uses: styfle/cancel-workflow-action@0.12.1
+        uses: styfle/cancel-workflow-action@0.13.1
 
   build:
     runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v4
-    
-    - name: setup-scala
-      uses: olafurpg/setup-scala@v14
+
+    - name: setup-java
+      uses: actions/setup-java@v4
       with:
-        java-version: adopt@1.11
+        distribution: temurin
+        java-version: 17
+        cache: sbt
 
     - name: Compile, check formatting, lint, and run tests
       run: sbt ci compile styleCheck test
